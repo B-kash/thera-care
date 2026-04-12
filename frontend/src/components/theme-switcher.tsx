@@ -20,7 +20,7 @@ export function ThemeSwitcher() {
   const { palette, mode, setPalette, setMode } = useTheme();
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
+    <div className="flex max-w-full flex-wrap items-center justify-end gap-2 text-xs">
       <label className="sr-only" htmlFor="theme-palette">
         Color theme
       </label>
@@ -28,7 +28,7 @@ export function ThemeSwitcher() {
         id="theme-palette"
         value={palette}
         onChange={(e) => setPalette(e.target.value as PaletteId)}
-        className="h-8 max-w-[8rem] rounded-md border border-app-border bg-app-elevated px-2 text-foreground"
+        className="min-h-11 max-w-[9rem] rounded-md border border-app-border bg-app-elevated px-2 text-foreground sm:min-h-8 sm:max-w-[8rem]"
       >
         {PALETTES.map((p) => (
           <option key={p.id} value={p.id}>
@@ -43,7 +43,7 @@ export function ThemeSwitcher() {
         id="theme-mode"
         value={mode}
         onChange={(e) => setMode(e.target.value as ColorMode)}
-        className="h-8 max-w-[8rem] rounded-md border border-app-border bg-app-elevated px-2 text-foreground"
+        className="min-h-11 max-w-[9rem] rounded-md border border-app-border bg-app-elevated px-2 text-foreground sm:min-h-8 sm:max-w-[8rem]"
       >
         {MODES.map((m) => (
           <option key={m.id} value={m.id}>

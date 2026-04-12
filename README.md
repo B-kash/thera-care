@@ -70,3 +70,7 @@ Database URL defaults to `postgresql://postgres:postgres@localhost:5433/physio_a
 3. **Frontend** (`frontend/`): copy `frontend/.env.example` → `frontend/.env.local` if missing, then `npm install`, `npm run dev`.
 
 On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those two shells after shared setup (see table above).
+
+### Mobile / responsive (FR-12 smoke)
+
+Narrow viewport (~375px): **menu** opens drawer; **no horizontal scroll** for primary chrome. Spot-check **login**, **dashboard**, **patients** (list + detail), **appointments** (list + calendar), **treatment notes**, **exercise plans**, **progress** — forms stack; wide tables scroll inside bordered region. **iOS Safari + Chrome Android** if you ship beyond desktop.

@@ -113,7 +113,7 @@ export function AppointmentsClient() {
   }, [ready, user, load, tab]);
 
   const tabClass = (active: boolean) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+    `inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors sm:min-h-0 sm:py-1.5 ${
       active
         ? "bg-app-accent text-app-accent-fg"
         : "text-foreground/80 hover:bg-app-muted"

@@ -63,7 +63,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-xl border border-app-border/80 bg-app-elevated/90 p-8 shadow-lg shadow-black/10 backdrop-blur-xl dark:shadow-black/40">
+    <div className="w-full max-w-sm rounded-xl border border-app-border/80 bg-app-elevated/90 p-5 shadow-lg shadow-black/10 backdrop-blur-xl dark:shadow-black/40 sm:p-8">
       <h1 className="text-xl font-semibold tracking-tight text-foreground">
         Thera Care
       </h1>
