@@ -31,8 +31,8 @@ httpOnly cookies, same-origin / BFF, CSRF, Helmet, rate limits on `/auth/*`—do
 | **3**        | Patient management        | **Done:** CRUD API + UI. |
 | **4**        | Appointments              | **Done:** CRUD, patient + therapist (staff user), status, overlap rule, UI. |
 | **5**        | Treatment notes           | **Done:** Prisma `TreatmentNote` (SOAP text fields), REST CRUD + optional `appointmentId`, JWT; UI list (`?patientId=`), new/edit, patient profile snippet + links. |
-| **6**        | Exercise plans            | **Next** (backend + UI per AGENTS). |
-| **7**        | Progress tracking         | Planned. |
+| **6**        | Exercise plans            | **Done:** `ExercisePlan` + `ExerciseItem`, patient + author; REST plan CRUD + item CRUD under plan; JWT; UI `?patientId=` list, new, detail with items; patient profile snippet. |
+| **7**        | Progress tracking         | **Next** (`ProgressRecord` + UI per AGENTS). |
 | **8**        | Polish & stabilization      | Planned (validation, errors, UI consistency). |
 | **9**        | Optional improvements     | Do not start unless asked (RBAC, audit, etc.). |
 
@@ -47,10 +47,10 @@ Per AGENTS.md, Phase 1 includes:
 - [x] `ConfigModule` (global)
 - [x] Global `ValidationPipe`
 - [x] **Swagger** at `/api/docs` (Bearer auth)
-- [x] Module scaffolds: `auth`, `users`, `patients`, `appointments`, **`treatment-notes`**, **`exercise-plans`**, **`progress`** (stubs until their phases)
-- [x] Frontend base layout: **sidebar + header** + routes: `/login`, `/dashboard`, `/patients`, `/appointments`, **`/treatment-notes`**, **`/exercise-plans`**, **`/progress`** (placeholders for future phases)
+- [x] Module scaffolds: `auth`, `users`, `patients`, `appointments`, **`treatment-notes`** (Phase 5), **`exercise-plans`** (Phase 6), **`progress`** (stub until Phase 7)
+- [x] Frontend base layout: **sidebar + header** + routes: `/login`, `/dashboard`, `/patients`, `/appointments`, **`/treatment-notes`**, **`/exercise-plans`**, **`/progress`** (`/progress` placeholder until Phase 7)
 - [x] `docker-compose.yml` for Postgres
-- **Prisma schema:** AGENTS lists all models in Phase 1; repo adds **TreatmentNote / ExercisePlan / ExerciseItem / ProgressRecord** when **AGENTS Phases 5–7** are implemented (not duplicated here as fake tables unless a migration adds them).
+- **Prisma schema:** AGENTS lists all models in Phase 1; repo adds **TreatmentNote** (Phase 5), **ExercisePlan / ExerciseItem** (Phase 6), **ProgressRecord** when **AGENTS Phase 7** ships.
 
 ---
 
@@ -80,10 +80,10 @@ Per AGENTS.md, Phase 1 includes:
 
 ---
 
-## AGENTS Phase 6 — Exercise plans
+## AGENTS Phase 6 — Exercise plans (done)
 
-- Backend: `ExercisePlan` + `ExerciseItem`, assign to patient.
-- Frontend: plan UI (see AGENTS.md).
+- Backend: `ExercisePlan` (patient, author), `ExerciseItem` (name, instructions, sets, reps, sort order); list by `patientId`; nested `POST|PATCH|DELETE …/items`.
+- Frontend: `/exercise-plans` picker + list, `/exercise-plans/new`, `/exercise-plans/[id]` edit plan + manage items; patient detail shows recent plans.
 
 ---
 

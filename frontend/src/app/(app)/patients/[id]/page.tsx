@@ -2,6 +2,7 @@
 
 import { apiFetchJson } from "@/lib/api";
 import type { Patient } from "@/types/patient";
+import type { ExercisePlanList } from "@/types/exercise-plan";
 import type { TreatmentNote } from "@/types/treatment-note";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
@@ -34,6 +35,8 @@ export default function PatientDetailPage() {
   const [deletePending, setDeletePending] = useState(false);
   const [treatmentNotes, setTreatmentNotes] = useState<TreatmentNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
+  const [exercisePlans, setExercisePlans] = useState<ExercisePlanList[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -73,6 +76,23 @@ export default function PatientDetailPage() {
     }
   }, [token, id]);
 
+  const loadPlans = useCallback(async () => {
+    if (!token || !id) return;
+    setPlansLoading(true);
+    try {
+      const qs = new URLSearchParams({ patientId: id });
+      const list = await apiFetchJson<ExercisePlanList[]>(
+        `/exercise-plans?${qs}`,
+        token,
+      );
+      setExercisePlans(list);
+    } catch {
+      setExercisePlans([]);
+    } finally {
+      setPlansLoading(false);
+    }
+  }, [token, id]);
+
   useEffect(() => {
     if (!ready || !token) return;
     void load();
@@ -82,6 +102,11 @@ export default function PatientDetailPage() {
     if (!ready || !token || !id) return;
     void loadNotes();
   }, [ready, token, id, loadNotes]);
+
+  useEffect(() => {
+    if (!ready || !token || !id) return;
+    void loadPlans();
+  }, [ready, token, id, loadPlans]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -103,6 +128,7 @@ export default function PatientDetailPage() {
       });
       setPatient(updated);
       void loadNotes();
+      void loadPlans();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -197,6 +223,52 @@ export default function PatientDetailPage() {
                 <p className="mt-0.5 line-clamp-1 text-xs text-zinc-500">
                   {n.subjective.trim().slice(0, 120)}
                   {n.subjective.length > 120 ? "…" : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold tracking-tight">
+            Exercise plans
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/exercise-plans?patientId=${encodeURIComponent(patient.id)}`}
+              className="text-xs font-medium underline"
+            >
+              View all
+            </Link>
+            <Link
+              href={`/exercise-plans/new?patientId=${encodeURIComponent(patient.id)}`}
+              className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
+            >
+              New plan
+            </Link>
+          </div>
+        </div>
+        {plansLoading ? (
+          <p className="mt-2 text-sm text-zinc-500">Loading plans…</p>
+        ) : exercisePlans.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            No exercise plans yet.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {exercisePlans.slice(0, 5).map((plan) => (
+              <li key={plan.id}>
+                <Link
+                  href={`/exercise-plans/${plan.id}`}
+                  className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+                >
+                  {plan.title}
+                </Link>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {plan._count.items} exercise
+                  {plan._count.items === 1 ? "" : "s"}
                 </p>
               </li>
             ))}

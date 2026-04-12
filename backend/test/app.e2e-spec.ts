@@ -47,6 +47,22 @@ describe('AppController (e2e)', () => {
           delete: async () => ({}),
           count: async () => 0,
         },
+        exercisePlan: {
+          findMany: async () => [],
+          findUnique: async () => null,
+          create: async () => ({}),
+          update: async () => ({}),
+          delete: async () => ({}),
+          count: async () => 0,
+        },
+        exerciseItem: {
+          findMany: async () => [],
+          findUnique: async () => null,
+          create: async () => ({}),
+          update: async () => ({}),
+          delete: async () => ({}),
+          aggregate: async () => ({ _max: { sortOrder: null } }),
+        },
       })
       .compile();
 
@@ -91,5 +107,9 @@ describe('AppController (e2e)', () => {
 
   it('/treatment-notes (GET) without token returns 401', () => {
     return request(app.getHttpServer()).get('/treatment-notes').expect(401);
+  });
+
+  it('/exercise-plans (GET) without token returns 401', () => {
+    return request(app.getHttpServer()).get('/exercise-plans').expect(401);
   });
 });
