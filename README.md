@@ -71,6 +71,10 @@ Database URL defaults to `postgresql://postgres:postgres@localhost:5433/physio_a
 
 On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those two shells after shared setup (see table above).
 
+### Audit logs (admins)
+
+Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-logs` (supports `entityType`, `actorUserId`, `action`, `skip`, `take`). See [docs/AUDIT_LOGS.md](docs/AUDIT_LOGS.md) for retention notes.
+
 ### Mobile / responsive (FR-12 smoke)
 
 Narrow viewport (~375px): **menu** opens drawer; **no horizontal scroll** for primary chrome. Spot-check **login**, **dashboard**, **patients** (list + detail), **appointments** (list + calendar), **treatment notes**, **exercise plans**, **progress** — forms stack; wide tables scroll inside bordered region. **iOS Safari + Chrome Android** if you ship beyond desktop.

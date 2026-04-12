@@ -19,6 +19,7 @@ import { UserRole } from '../generated/prisma/client';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import type { RequestUser } from '../auth/strategies/jwt.strategy';
+import { auditContextFromRequest } from '../audit/audit-request.util';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { ListAppointmentsQueryDto } from './dto/list-appointments-query.dto';
@@ -35,7 +36,11 @@ export class AppointmentsController {
     @Body() dto: CreateAppointmentDto,
     @Req() req: Request & { user: RequestUser },
   ) {
-    return this.appointmentsService.create(dto, req.user.userId);
+    return this.appointmentsService.create(
+      dto,
+      req.user.userId,
+      auditContextFromRequest(req),
+    );
   }
 
   @Get()
@@ -55,14 +60,22 @@ export class AppointmentsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAppointmentDto,
+    @Req() req: Request & { user: RequestUser },
   ) {
-    return this.appointmentsService.update(id, dto);
+    return this.appointmentsService.update(
+      id,
+      dto,
+      auditContextFromRequest(req),
+    );
   }
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
-    await this.appointmentsService.remove(id);
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    await this.appointmentsService.remove(id, auditContextFromRequest(req));
   }
 }

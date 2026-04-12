@@ -25,6 +25,21 @@ enum UserRole {
   STAFF
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum AuditEntityType {
+  PATIENT
+  APPOINTMENT
+  TREATMENT_NOTE
+  EXERCISE_PLAN
+  EXERCISE_ITEM
+  PROGRESS_RECORD
+}
+
 /// Application user (physiotherapist / staff).
 model User {
   id                   String          @id @default(uuid())
@@ -39,8 +54,28 @@ model User {
   treatmentNotes      TreatmentNote[]
   exercisePlans       ExercisePlan[]
   progressRecords     ProgressRecord[]
+  auditLogs           AuditLog[]
 
   @@map("users")
+}
+
+/// Append-only security / clinical audit trail (no updates from app).
+model AuditLog {
+  id          String           @id @default(uuid())
+  actorUserId String           @map("actor_user_id")
+  actor       User             @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  action      AuditAction
+  entityType  AuditEntityType  @map("entity_type")
+  entityId    String           @map("entity_id")
+  metadata    Json?
+  ip          String?          @db.VarChar(128)
+  userAgent   String?          @map("user_agent") @db.VarChar(512)
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@map("audit_logs")
 }
 
 model Patient {

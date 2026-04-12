@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { isAdminRole } from "@/components/mutate-only";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { useAuth } from "@/providers/auth-provider";
 import { LogoutButton } from "./logout-button";
 
-const navItems = [
+const coreNavItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/patients", label: "Patients" },
   { href: "/appointments", label: "Appointments" },
@@ -40,7 +42,15 @@ function MenuIcon({ open }: { open: boolean }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const navItems = useMemo(() => {
+    const admin = isAdminRole(user?.role)
+      ? [{ href: "/audit-logs", label: "Audit logs" } as const]
+      : [];
+    return [...coreNavItems, ...admin];
+  }, [user?.role]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;

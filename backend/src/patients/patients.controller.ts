@@ -19,6 +19,7 @@ import { UserRole } from '../generated/prisma/client';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import type { RequestUser } from '../auth/strategies/jwt.strategy';
+import { auditContextFromRequest } from '../audit/audit-request.util';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { ListPatientsQueryDto } from './dto/list-patients-query.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -35,7 +36,11 @@ export class PatientsController {
     @Body() dto: CreatePatientDto,
     @Req() req: Request & { user: RequestUser },
   ) {
-    return this.patientsService.create(dto, req.user.userId);
+    return this.patientsService.create(
+      dto,
+      req.user.userId,
+      auditContextFromRequest(req),
+    );
   }
 
   @Get()
@@ -55,14 +60,18 @@ export class PatientsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePatientDto,
+    @Req() req: Request & { user: RequestUser },
   ) {
-    return this.patientsService.update(id, dto);
+    return this.patientsService.update(id, dto, auditContextFromRequest(req));
   }
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
-    await this.patientsService.remove(id);
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    await this.patientsService.remove(id, auditContextFromRequest(req));
   }
 }

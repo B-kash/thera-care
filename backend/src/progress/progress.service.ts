@@ -1,5 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit-request.util';
+import {
+  AuditAction,
+  AuditEntityType,
+  Prisma,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProgressRecordDto } from './dto/create-progress-record.dto';
 import { ListProgressQueryDto } from './dto/list-progress-query.dto';
@@ -33,15 +39,19 @@ export type ProgressRecordDto = Prisma.ProgressRecordGetPayload<{
 
 @Injectable()
 export class ProgressService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(
     dto: CreateProgressRecordDto,
     authorUserId: string,
+    ctx: AuditRequestContext,
   ): Promise<ProgressRecordDto> {
     await this.ensurePatientExists(dto.patientId);
 
-    return this.prisma.progressRecord.create({
+    const row = await this.prisma.progressRecord.create({
       data: {
         patientId: dto.patientId,
         authorUserId,
@@ -52,6 +62,14 @@ export class ProgressService {
       },
       select: recordSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.PROGRESS_RECORD,
+      entityId: row.id,
+      metadata: { progressRecordId: row.id, patientId: row.patientId },
+    });
+    return row;
   }
 
   async findAllForPatient(
@@ -79,6 +97,7 @@ export class ProgressService {
   async update(
     id: string,
     dto: UpdateProgressRecordDto,
+    ctx: AuditRequestContext,
   ): Promise<ProgressRecordDto> {
     const existing = await this.prisma.progressRecord.findUnique({
       where: { id },
@@ -104,19 +123,37 @@ export class ProgressService {
       data.recordedOn = parseDateOnly(dto.recordedOn);
     }
 
-    return this.prisma.progressRecord.update({
+    const row = await this.prisma.progressRecord.update({
       where: { id },
       data,
       select: recordSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.PROGRESS_RECORD,
+      entityId: id,
+      metadata: { progressRecordId: id, patientId: row.patientId },
+    });
+    return row;
   }
 
-  async remove(id: string): Promise<void> {
-    const n = await this.prisma.progressRecord.count({ where: { id } });
-    if (n === 0) {
+  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
+    const existing = await this.prisma.progressRecord.findUnique({
+      where: { id },
+      select: { patientId: true },
+    });
+    if (!existing) {
       throw new NotFoundException('Progress record not found');
     }
     await this.prisma.progressRecord.delete({ where: { id } });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.PROGRESS_RECORD,
+      entityId: id,
+      metadata: { progressRecordId: id, patientId: existing.patientId },
+    });
   }
 
   private async ensurePatientExists(patientId: string): Promise<void> {

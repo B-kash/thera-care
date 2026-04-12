@@ -7,6 +7,10 @@ export function canMutateRole(role: UserRole | undefined): boolean {
   return role === "ADMIN" || role === "THERAPIST";
 }
 
+export function isAdminRole(role: UserRole | undefined): boolean {
+  return role === "ADMIN";
+}
+
 /** Renders children only for roles allowed to POST/PATCH/DELETE (matches Nest RBAC). */
 export function MutateOnly({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
