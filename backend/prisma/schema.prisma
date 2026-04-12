@@ -19,12 +19,19 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+enum UserRole {
+  ADMIN
+  THERAPIST
+  STAFF
+}
+
 /// Application user (physiotherapist / staff).
 model User {
   id                   String          @id @default(uuid())
   email                String          @unique
   passwordHash         String?         @map("password_hash")
   displayName          String?         @map("display_name")
+  role                 UserRole        @default(THERAPIST)
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")
   patients             Patient[]

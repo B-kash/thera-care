@@ -1,5 +1,9 @@
-export function getApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+/** API path: absolute URL from env, or same-origin `/api/...` (Next rewrite → Nest). */
+export function resolveApiUrl(path: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  if (base) return `${base}${p}`;
+  return `/api${p}`;
 }
 
 async function readApiError(res: Response): Promise<string> {
@@ -14,18 +18,20 @@ async function readApiError(res: Response): Promise<string> {
   return text || `Request failed (${res.status})`;
 }
 
-/** Authenticated JSON request to the Nest API. */
+/** JSON request to Nest API with `credentials: 'include'` (httpOnly cookie session). */
 export async function apiFetchJson<T>(
   path: string,
-  token: string,
   init: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${token}`);
   if (init.body != null && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(`${getApiBaseUrl()}${path}`, { ...init, headers });
+  const res = await fetch(resolveApiUrl(path), {
+    ...init,
+    headers,
+    credentials: "include",
+  });
   if (res.status === 204) {
     return undefined as T;
   }

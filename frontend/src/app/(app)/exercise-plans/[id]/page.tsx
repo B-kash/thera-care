@@ -1,5 +1,6 @@
 "use client";
 
+import { canMutateRole } from "@/components/mutate-only";
 import { apiFetchJson } from "@/lib/api";
 import type { ExerciseItem, ExercisePlanDetail } from "@/types/exercise-plan";
 import { useAuth } from "@/providers/auth-provider";
@@ -10,12 +11,12 @@ import { useCallback, useEffect, useState } from "react";
 function ItemRow({
   item,
   planId,
-  token,
+  readOnly,
   onUpdated,
 }: {
   item: ExerciseItem;
   planId: string;
-  token: string;
+  readOnly: boolean;
   onUpdated: () => void;
 }) {
   const [name, setName] = useState(item.name);
@@ -40,6 +41,7 @@ function ItemRow({
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
+    if (readOnly) return;
     setError(null);
     const so = Number.parseInt(sortOrder, 10);
     if (Number.isNaN(so) || so < 0) {
@@ -78,7 +80,6 @@ function ItemRow({
     try {
       await apiFetchJson<ExerciseItem>(
         `/exercise-plans/${planId}/items/${item.id}`,
-        token,
         { method: "PATCH", body: JSON.stringify(body) },
       );
       onUpdated();
@@ -90,15 +91,14 @@ function ItemRow({
   }
 
   async function onDelete() {
+    if (readOnly) return;
     if (!window.confirm("Remove this exercise from the plan?")) return;
     setPending(true);
     setError(null);
     try {
-      await apiFetchJson(
-        `/exercise-plans/${planId}/items/${item.id}`,
-        token,
-        { method: "DELETE" },
-      );
+      await apiFetchJson(`/exercise-plans/${planId}/items/${item.id}`, {
+        method: "DELETE",
+      });
       onUpdated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
@@ -117,6 +117,7 @@ function ItemRow({
           <label className="text-xs font-medium">Name *</label>
           <input
             required
+            disabled={readOnly}
             className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -126,6 +127,7 @@ function ItemRow({
           <label className="text-xs font-medium">Instructions</label>
           <textarea
             rows={2}
+            disabled={readOnly}
             className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
@@ -135,6 +137,7 @@ function ItemRow({
           <label className="text-xs font-medium">Sets</label>
           <input
             inputMode="numeric"
+            disabled={readOnly}
             className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={sets}
             onChange={(e) => setSets(e.target.value)}
@@ -144,6 +147,7 @@ function ItemRow({
           <label className="text-xs font-medium">Reps</label>
           <input
             inputMode="numeric"
+            disabled={readOnly}
             className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={reps}
             onChange={(e) => setReps(e.target.value)}
@@ -153,6 +157,7 @@ function ItemRow({
           <label className="text-xs font-medium">Order</label>
           <input
             inputMode="numeric"
+            disabled={readOnly}
             className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
@@ -162,23 +167,25 @@ function ItemRow({
       {error && (
         <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
       )}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800"
-        >
-          {pending ? "…" : "Save item"}
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => void onDelete()}
-          className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 dark:border-red-900 dark:text-red-400"
-        >
-          Remove
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-600 dark:hover:bg-zinc-800"
+          >
+            {pending ? "…" : "Save item"}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void onDelete()}
+            className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 dark:border-red-900 dark:text-red-400"
+          >
+            Remove
+          </button>
+        </div>
+      )}
     </form>
   );
 }
@@ -186,7 +193,7 @@ function ItemRow({
 export default function ExercisePlanDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
 
   const [plan, setPlan] = useState<ExercisePlanDetail | null>(null);
@@ -205,14 +212,11 @@ export default function ExercisePlanDetailPage() {
   const [addError, setAddError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setLoading(true);
     setPlanError(null);
     try {
-      const p = await apiFetchJson<ExercisePlanDetail>(
-        `/exercise-plans/${id}`,
-        token,
-      );
+      const p = await apiFetchJson<ExercisePlanDetail>(`/exercise-plans/${id}`);
       setPlan(p);
       setTitle(p.title);
       setNotes(p.notes ?? "");
@@ -222,16 +226,16 @@ export default function ExercisePlanDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void load();
-  }, [ready, token, load]);
+  }, [ready, user, load]);
 
   async function onSavePlan(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !plan) return;
+    if (!user || !plan) return;
     setSavePlanPending(true);
     setPlanError(null);
     try {
@@ -241,7 +245,6 @@ export default function ExercisePlanDetailPage() {
       };
       const updated = await apiFetchJson<ExercisePlanDetail>(
         `/exercise-plans/${id}`,
-        token,
         { method: "PATCH", body: JSON.stringify(body) },
       );
       setPlan(updated);
@@ -253,13 +256,13 @@ export default function ExercisePlanDetailPage() {
   }
 
   async function onDeletePlan() {
-    if (!token || !plan) return;
+    if (!user || !plan) return;
     if (!window.confirm("Delete entire plan and all exercises?")) return;
     setDeletePlanPending(true);
     setPlanError(null);
     const pid = plan.patientId;
     try {
-      await apiFetchJson(`/exercise-plans/${id}`, token, { method: "DELETE" });
+      await apiFetchJson(`/exercise-plans/${id}`, { method: "DELETE" });
       router.replace(
         pid
           ? `/exercise-plans?patientId=${encodeURIComponent(pid)}`
@@ -274,7 +277,7 @@ export default function ExercisePlanDetailPage() {
 
   async function onAddItem(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!user) return;
     setAddError(null);
     const body: Record<string, unknown> = {
       name: newName.trim(),
@@ -301,7 +304,7 @@ export default function ExercisePlanDetailPage() {
 
     setAddPending(true);
     try {
-      await apiFetchJson(`/exercise-plans/${id}/items`, token, {
+      await apiFetchJson(`/exercise-plans/${id}/items`, {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -317,7 +320,7 @@ export default function ExercisePlanDetailPage() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 
@@ -337,6 +340,7 @@ export default function ExercisePlanDetailPage() {
   }
 
   const listHref = `/exercise-plans?patientId=${encodeURIComponent(plan.patientId)}`;
+  const canEdit = canMutateRole(user.role);
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -367,6 +371,7 @@ export default function ExercisePlanDetailPage() {
           <label className="block text-xs font-medium">Title *</label>
           <input
             required
+            disabled={!canEdit}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -376,6 +381,7 @@ export default function ExercisePlanDetailPage() {
           <label className="block text-xs font-medium">Notes</label>
           <textarea
             rows={3}
+            disabled={!canEdit}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -386,23 +392,25 @@ export default function ExercisePlanDetailPage() {
             {planError}
           </p>
         )}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={savePlanPending}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            {savePlanPending ? "Saving…" : "Save plan"}
-          </button>
-          <button
-            type="button"
-            disabled={deletePlanPending}
-            onClick={() => void onDeletePlan()}
-            className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 dark:border-red-900 dark:text-red-400"
-          >
-            {deletePlanPending ? "Deleting…" : "Delete plan"}
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={savePlanPending}
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              {savePlanPending ? "Saving…" : "Save plan"}
+            </button>
+            <button
+              type="button"
+              disabled={deletePlanPending}
+              onClick={() => void onDeletePlan()}
+              className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 dark:border-red-900 dark:text-red-400"
+            >
+              {deletePlanPending ? "Deleting…" : "Delete plan"}
+            </button>
+          </div>
+        )}
       </form>
 
       <section className="space-y-3">
@@ -413,60 +421,62 @@ export default function ExercisePlanDetailPage() {
               key={it.id}
               item={it}
               planId={id}
-              token={token}
+              readOnly={!canEdit}
               onUpdated={() => void load()}
             />
           ))}
         </div>
 
-        <form
-          className="space-y-2 rounded-md border border-dashed border-zinc-300 p-3 dark:border-zinc-600"
-          onSubmit={onAddItem}
-        >
-          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-            Add exercise
-          </p>
-          <input
-            required
-            placeholder="Name *"
-            className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <textarea
-            placeholder="Instructions"
-            rows={2}
-            className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-            value={newInstructions}
-            onChange={(e) => setNewInstructions(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <input
-              placeholder="Sets"
-              inputMode="numeric"
-              className="w-24 rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-              value={newSets}
-              onChange={(e) => setNewSets(e.target.value)}
-            />
-            <input
-              placeholder="Reps"
-              inputMode="numeric"
-              className="w-24 rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
-              value={newReps}
-              onChange={(e) => setNewReps(e.target.value)}
-            />
-          </div>
-          {addError && (
-            <p className="text-xs text-red-600 dark:text-red-400">{addError}</p>
-          )}
-          <button
-            type="submit"
-            disabled={addPending}
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
+        {canEdit && (
+          <form
+            className="space-y-2 rounded-md border border-dashed border-zinc-300 p-3 dark:border-zinc-600"
+            onSubmit={onAddItem}
           >
-            {addPending ? "Adding…" : "Add exercise"}
-          </button>
-        </form>
+            <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+              Add exercise
+            </p>
+            <input
+              required
+              placeholder="Name *"
+              className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+            <textarea
+              placeholder="Instructions"
+              rows={2}
+              className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              value={newInstructions}
+              onChange={(e) => setNewInstructions(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <input
+                placeholder="Sets"
+                inputMode="numeric"
+                className="w-24 rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+                value={newSets}
+                onChange={(e) => setNewSets(e.target.value)}
+              />
+              <input
+                placeholder="Reps"
+                inputMode="numeric"
+                className="w-24 rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+                value={newReps}
+                onChange={(e) => setNewReps(e.target.value)}
+              />
+            </div>
+            {addError && (
+              <p className="text-xs text-red-600 dark:text-red-400">{addError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={addPending}
+              className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              {addPending ? "Adding…" : "Add exercise"}
+            </button>
+          </form>
+        )}
       </section>
     </div>
   );

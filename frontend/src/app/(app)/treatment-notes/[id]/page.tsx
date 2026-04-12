@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 export default function TreatmentNoteDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
 
   const [note, setNote] = useState<TreatmentNote | null>(null);
@@ -27,11 +27,11 @@ export default function TreatmentNoteDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setLoading(true);
     setError(null);
     try {
-      const n = await apiFetchJson<TreatmentNote>(`/treatment-notes/${id}`, token);
+      const n = await apiFetchJson<TreatmentNote>(`/treatment-notes/${id}`);
       setNote(n);
       setSubjective(n.subjective);
       setObjective(n.objective);
@@ -44,15 +44,15 @@ export default function TreatmentNoteDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void load();
-  }, [ready, token, load]);
+  }, [ready, user, load]);
 
   useEffect(() => {
-    if (!token || !note?.patientId) {
+    if (!user || !note?.patientId) {
       setAppointments([]);
       return;
     }
@@ -60,10 +60,10 @@ export default function TreatmentNoteDetailPage() {
       patientId: note.patientId,
       take: "100",
     });
-    void apiFetchJson<Appointment[]>(`/appointments?${qs}`, token)
+    void apiFetchJson<Appointment[]>(`/appointments?${qs}`)
       .then(setAppointments)
       .catch(() => setAppointments([]));
-  }, [token, note?.patientId]);
+  }, [user, note?.patientId]);
 
   const appointmentChoices = useMemo(
     () =>
@@ -78,7 +78,7 @@ export default function TreatmentNoteDetailPage() {
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !note) return;
+    if (!user || !note) return;
     setSavePending(true);
     setError(null);
     try {
@@ -91,9 +91,7 @@ export default function TreatmentNoteDetailPage() {
       body.appointmentId = appointmentId || null;
 
       const updated = await apiFetchJson<TreatmentNote>(
-        `/treatment-notes/${id}`,
-        token,
-        {
+        `/treatment-notes/${id}`, {
           method: "PATCH",
           body: JSON.stringify(body),
         },
@@ -107,13 +105,13 @@ export default function TreatmentNoteDetailPage() {
   }
 
   async function onDelete() {
-    if (!token || !note) return;
+    if (!user || !note) return;
     if (!window.confirm("Delete this treatment note?")) return;
     const patientId = note.patientId;
     setDeletePending(true);
     setError(null);
     try {
-      await apiFetchJson(`/treatment-notes/${id}`, token, { method: "DELETE" });
+      await apiFetchJson(`/treatment-notes/${id}`, { method: "DELETE" });
       router.replace(
         patientId
           ? `/treatment-notes?patientId=${encodeURIComponent(patientId)}`
@@ -126,7 +124,7 @@ export default function TreatmentNoteDetailPage() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 

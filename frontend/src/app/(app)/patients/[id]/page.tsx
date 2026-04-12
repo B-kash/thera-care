@@ -5,6 +5,7 @@ import type { Patient } from "@/types/patient";
 import type { ExercisePlanList } from "@/types/exercise-plan";
 import type { ProgressRecord } from "@/types/progress-record";
 import type { TreatmentNote } from "@/types/treatment-note";
+import { canMutateRole, MutateOnly } from "@/components/mutate-only";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -20,7 +21,7 @@ function dateInputValue(iso: string | null): string {
 export default function PatientDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
 
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -42,11 +43,11 @@ export default function PatientDetailPage() {
   const [progressLoading, setProgressLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setLoading(true);
     setError(null);
     try {
-      const p = await apiFetchJson<Patient>(`/patients/${id}`, token);
+      const p = await apiFetchJson<Patient>(`/patients/${id}`);
       setPatient(p);
       setFirstName(p.firstName);
       setLastName(p.lastName);
@@ -60,16 +61,15 @@ export default function PatientDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   const loadNotes = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setNotesLoading(true);
     try {
       const qs = new URLSearchParams({ patientId: id });
       const list = await apiFetchJson<TreatmentNote[]>(
         `/treatment-notes?${qs}`,
-        token,
       );
       setTreatmentNotes(list);
     } catch {
@@ -77,16 +77,15 @@ export default function PatientDetailPage() {
     } finally {
       setNotesLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   const loadPlans = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setPlansLoading(true);
     try {
       const qs = new URLSearchParams({ patientId: id });
       const list = await apiFetchJson<ExercisePlanList[]>(
         `/exercise-plans?${qs}`,
-        token,
       );
       setExercisePlans(list);
     } catch {
@@ -94,16 +93,15 @@ export default function PatientDetailPage() {
     } finally {
       setPlansLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   const loadProgress = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setProgressLoading(true);
     try {
       const qs = new URLSearchParams({ patientId: id });
       const list = await apiFetchJson<ProgressRecord[]>(
         `/progress?${qs}`,
-        token,
       );
       setProgressRows(list);
     } catch {
@@ -111,31 +109,31 @@ export default function PatientDetailPage() {
     } finally {
       setProgressLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void load();
-  }, [ready, token, load]);
+  }, [ready, user, load]);
 
   useEffect(() => {
-    if (!ready || !token || !id) return;
+    if (!ready || !user || !id) return;
     void loadNotes();
-  }, [ready, token, id, loadNotes]);
+  }, [ready, user, id, loadNotes]);
 
   useEffect(() => {
-    if (!ready || !token || !id) return;
+    if (!ready || !user || !id) return;
     void loadPlans();
-  }, [ready, token, id, loadPlans]);
+  }, [ready, user, id, loadPlans]);
 
   useEffect(() => {
-    if (!ready || !token || !id) return;
+    if (!ready || !user || !id) return;
     void loadProgress();
-  }, [ready, token, id, loadProgress]);
+  }, [ready, user, id, loadProgress]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!user) return;
     setSavePending(true);
     setError(null);
     try {
@@ -147,7 +145,7 @@ export default function PatientDetailPage() {
         dateOfBirth: dateOfBirth || null,
         notes: notes.trim() || null,
       };
-      const updated = await apiFetchJson<Patient>(`/patients/${id}`, token, {
+      const updated = await apiFetchJson<Patient>(`/patients/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       });
@@ -163,12 +161,12 @@ export default function PatientDetailPage() {
   }
 
   async function onDelete() {
-    if (!token) return;
+    if (!user) return;
     if (!window.confirm("Delete this patient? This cannot be undone.")) return;
     setDeletePending(true);
     setError(null);
     try {
-      await apiFetchJson(`/patients/${id}`, token, { method: "DELETE" });
+      await apiFetchJson(`/patients/${id}`, { method: "DELETE" });
       router.replace("/patients");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
@@ -177,9 +175,11 @@ export default function PatientDetailPage() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
+
+  const canEdit = canMutateRole(user.role);
 
   if (loading) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
@@ -222,12 +222,14 @@ export default function PatientDetailPage() {
             >
               View all
             </Link>
-            <Link
-              href={`/treatment-notes/new?patientId=${encodeURIComponent(patient.id)}`}
-              className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
-            >
-              New note
-            </Link>
+            <MutateOnly>
+              <Link
+                href={`/treatment-notes/new?patientId=${encodeURIComponent(patient.id)}`}
+                className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
+              >
+                New note
+              </Link>
+            </MutateOnly>
           </div>
         </div>
         {notesLoading ? (
@@ -268,12 +270,14 @@ export default function PatientDetailPage() {
             >
               View all
             </Link>
-            <Link
-              href={`/exercise-plans/new?patientId=${encodeURIComponent(patient.id)}`}
-              className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
-            >
-              New plan
-            </Link>
+            <MutateOnly>
+              <Link
+                href={`/exercise-plans/new?patientId=${encodeURIComponent(patient.id)}`}
+                className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
+              >
+                New plan
+              </Link>
+            </MutateOnly>
           </div>
         </div>
         {plansLoading ? (
@@ -312,12 +316,14 @@ export default function PatientDetailPage() {
             >
               View all
             </Link>
-            <Link
-              href={`/progress/new?patientId=${encodeURIComponent(patient.id)}`}
-              className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
-            >
-              New entry
-            </Link>
+            <MutateOnly>
+              <Link
+                href={`/progress/new?patientId=${encodeURIComponent(patient.id)}`}
+                className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
+              >
+                New entry
+              </Link>
+            </MutateOnly>
           </div>
         </div>
         {progressLoading ? (
@@ -352,6 +358,7 @@ export default function PatientDetailPage() {
             <label className="block text-xs font-medium">First name *</label>
             <input
               required
+              disabled={!canEdit}
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
@@ -361,6 +368,7 @@ export default function PatientDetailPage() {
             <label className="block text-xs font-medium">Last name *</label>
             <input
               required
+              disabled={!canEdit}
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
@@ -371,6 +379,7 @@ export default function PatientDetailPage() {
           <label className="block text-xs font-medium">Email</label>
           <input
             type="email"
+            disabled={!canEdit}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -379,6 +388,7 @@ export default function PatientDetailPage() {
         <div>
           <label className="block text-xs font-medium">Phone</label>
           <input
+            disabled={!canEdit}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -388,6 +398,7 @@ export default function PatientDetailPage() {
           <label className="block text-xs font-medium">Date of birth</label>
           <input
             type="date"
+            disabled={!canEdit}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={dateOfBirth}
             onChange={(e) => setDateOfBirth(e.target.value)}
@@ -397,6 +408,7 @@ export default function PatientDetailPage() {
           <label className="block text-xs font-medium">Notes</label>
           <textarea
             rows={4}
+            disabled={!canEdit}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -409,23 +421,25 @@ export default function PatientDetailPage() {
           </p>
         )}
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={savePending}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            {savePending ? "Saving…" : "Save changes"}
-          </button>
-          <button
-            type="button"
-            disabled={deletePending}
-            onClick={() => void onDelete()}
-            className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
-          >
-            {deletePending ? "Deleting…" : "Delete patient"}
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={savePending}
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              {savePending ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              type="button"
+              disabled={deletePending}
+              onClick={() => void onDelete()}
+              className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
+            >
+              {deletePending ? "Deleting…" : "Delete patient"}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export function NewExercisePlanClient() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPatientId = searchParams.get("patientId") ?? "";
@@ -22,15 +22,15 @@ export function NewExercisePlanClient() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !patientId) return;
+    if (!user || !patientId) return;
     setError(null);
     setPending(true);
     try {
@@ -41,9 +41,7 @@ export function NewExercisePlanClient() {
       if (notes.trim()) body.notes = notes.trim();
 
       const created = await apiFetchJson<ExercisePlanDetail>(
-        "/exercise-plans",
-        token,
-        {
+        "/exercise-plans", {
           method: "POST",
           body: JSON.stringify(body),
         },
@@ -56,7 +54,7 @@ export function NewExercisePlanClient() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 

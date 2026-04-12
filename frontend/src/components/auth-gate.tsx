@@ -5,22 +5,22 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { ready, token } = useAuth();
+  const { ready, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (!ready) return;
-    if (!token) {
+    if (!user) {
       const next =
         pathname && pathname !== "/login"
           ? `?next=${encodeURIComponent(pathname)}`
           : "";
       router.replace(`/login${next}`);
     }
-  }, [ready, token, router, pathname]);
+  }, [ready, user, router, pathname]);
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
         Loading…

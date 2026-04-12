@@ -17,7 +17,7 @@ function todayInputValue(): string {
 }
 
 export function NewProgressClient() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPatientId = searchParams.get("patientId") ?? "";
@@ -32,15 +32,15 @@ export function NewProgressClient() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !patientId) return;
+    if (!user || !patientId) return;
     setError(null);
     setPending(true);
     try {
@@ -67,7 +67,7 @@ export function NewProgressClient() {
       }
       if (notes.trim()) body.notes = notes.trim();
 
-      const created = await apiFetchJson<ProgressRecord>("/progress", token, {
+      const created = await apiFetchJson<ProgressRecord>("/progress", {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -79,7 +79,7 @@ export function NewProgressClient() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 

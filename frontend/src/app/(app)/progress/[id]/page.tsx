@@ -22,7 +22,7 @@ function dateInputFromApi(iso: string): string {
 export default function ProgressDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
 
   const [row, setRow] = useState<ProgressRecord | null>(null);
@@ -36,11 +36,11 @@ export default function ProgressDetailPage() {
   const [deletePending, setDeletePending] = useState(false);
 
   const load = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setLoading(true);
     setError(null);
     try {
-      const r = await apiFetchJson<ProgressRecord>(`/progress/${id}`, token);
+      const r = await apiFetchJson<ProgressRecord>(`/progress/${id}`);
       setRow(r);
       setPainLevel(String(r.painLevel));
       setMobilityScore(
@@ -54,16 +54,16 @@ export default function ProgressDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void load();
-  }, [ready, token, load]);
+  }, [ready, user, load]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !row) return;
+    if (!user || !row) return;
     const pain = Number.parseInt(painLevel, 10);
     if (Number.isNaN(pain) || pain < 0 || pain > 10) {
       setError("Pain must be 0–10");
@@ -88,7 +88,7 @@ export default function ProgressDetailPage() {
     setSavePending(true);
     setError(null);
     try {
-      const updated = await apiFetchJson<ProgressRecord>(`/progress/${id}`, token, {
+      const updated = await apiFetchJson<ProgressRecord>(`/progress/${id}`, {
         method: "PATCH",
         body: JSON.stringify(body),
       });
@@ -101,13 +101,13 @@ export default function ProgressDetailPage() {
   }
 
   async function onDelete() {
-    if (!token || !row) return;
+    if (!user || !row) return;
     if (!window.confirm("Delete this progress entry?")) return;
     const pid = row.patientId;
     setDeletePending(true);
     setError(null);
     try {
-      await apiFetchJson(`/progress/${id}`, token, { method: "DELETE" });
+      await apiFetchJson(`/progress/${id}`, { method: "DELETE" });
       router.replace(
         pid ? `/progress?patientId=${encodeURIComponent(pid)}` : "/progress",
       );
@@ -118,7 +118,7 @@ export default function ProgressDetailPage() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveApiUrl } from "@/lib/api";
 import {
   createContext,
   useCallback,
@@ -8,21 +9,22 @@ import {
   useMemo,
   useState,
 } from "react";
-import { getApiBaseUrl } from "@/lib/api";
 
-const STORAGE_KEY = "thera_care_access_token";
+export type UserRole = "ADMIN" | "THERAPIST" | "STAFF";
 
 export type AuthUser = {
   id: string;
   email: string;
   displayName: string | null;
+  role: UserRole;
   createdAt: string;
   updatedAt: string;
 };
 
 type AuthContextValue = {
   ready: boolean;
-  token: string | null;
+  /** @deprecated Prefer `user`; kept for gradual refactors. Always null in cookie mode. */
+  token: null;
   user: AuthUser | null;
   login: (email: string, password: string) => Promise<void>;
   register: (
@@ -30,7 +32,7 @@ type AuthContextValue = {
     password: string,
     displayName?: string,
   ) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -39,111 +41,98 @@ async function parseErrorResponse(res: Response): Promise<string> {
   const text = await res.text();
   try {
     const err = JSON.parse(text) as { message?: string | string[] };
-    if (typeof err.message === 'string') return err.message;
-    if (Array.isArray(err.message)) return err.message.join(', ');
+    if (typeof err.message === "string") return err.message;
+    if (Array.isArray(err.message)) return err.message.join(", ");
   } catch {
     /* ignore */
   }
   return text || `Request failed (${res.status})`;
 }
 
-async function fetchMe(accessToken: string): Promise<AuthUser> {
-  const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+async function fetchMe(): Promise<AuthUser> {
+  const res = await fetch(resolveApiUrl("/auth/me"), {
+    credentials: "include",
   });
   if (!res.ok) {
     throw new Error("me_failed");
   }
-  return res.json();
+  return res.json() as Promise<AuthUser>;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    setToken(stored);
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    if (!token) {
-      setUser(null);
-      return;
-    }
     let cancelled = false;
-    void fetchMe(token)
+    void fetchMe()
       .then((u) => {
         if (!cancelled) setUser(u);
       })
       .catch(() => {
-        if (!cancelled) {
-          window.localStorage.removeItem(STORAGE_KEY);
-          setToken(null);
-          setUser(null);
-        }
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [ready, token]);
-
-  const setSession = useCallback((accessToken: string) => {
-    window.localStorage.setItem(STORAGE_KEY, accessToken);
-    setToken(accessToken);
   }, []);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      if (!res.ok) {
-        throw new Error(await parseErrorResponse(res));
-      }
-      const data = (await res.json()) as { accessToken: string };
-      setSession(data.accessToken);
-    },
-    [setSession],
-  );
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await fetch(resolveApiUrl("/auth/login"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) {
+      throw new Error(await parseErrorResponse(res));
+    }
+    const u = await fetchMe();
+    setUser(u);
+  }, []);
 
   const register = useCallback(
     async (email: string, password: string, displayName?: string) => {
-      const res = await fetch(`${getApiBaseUrl()}/auth/register`, {
+      const res = await fetch(resolveApiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password, displayName }),
       });
       if (!res.ok) {
         throw new Error(await parseErrorResponse(res));
       }
-      const data = (await res.json()) as { accessToken: string };
-      setSession(data.accessToken);
+      const u = await fetchMe();
+      setUser(u);
     },
-    [setSession],
+    [],
   );
 
-  const logout = useCallback(() => {
-    window.localStorage.removeItem(STORAGE_KEY);
-    setToken(null);
+  const logout = useCallback(async () => {
+    try {
+      await fetch(resolveApiUrl("/auth/logout"), {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      /* ignore */
+    }
     setUser(null);
   }, []);
 
   const value = useMemo(
     () => ({
       ready,
-      token,
+      token: null,
       user,
       login,
       register,
       logout,
     }),
-    [ready, token, user, login, register, logout],
+    [ready, user, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

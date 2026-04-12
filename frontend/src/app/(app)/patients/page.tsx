@@ -2,12 +2,13 @@
 
 import { apiFetchJson } from "@/lib/api";
 import type { Patient } from "@/types/patient";
+import { MutateOnly } from "@/components/mutate-only";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 export default function PatientsPage() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const [q, setQ] = useState("");
   const [submittedQ, setSubmittedQ] = useState("");
   const [rows, setRows] = useState<Patient[]>([]);
@@ -15,7 +16,7 @@ export default function PatientsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     setError(null);
     try {
@@ -23,7 +24,7 @@ export default function PatientsPage() {
       if (submittedQ.trim()) params.set("q", submittedQ.trim());
       params.set("take", "50");
       const path = `/patients${params.toString() ? `?${params}` : ""}`;
-      const data = await apiFetchJson<Patient[]>(path, token);
+      const data = await apiFetchJson<Patient[]>(path);
       setRows(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load patients");
@@ -31,12 +32,12 @@ export default function PatientsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, submittedQ]);
+  }, [user, submittedQ]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void load();
-  }, [ready, token, load]);
+  }, [ready, user, load]);
 
   return (
     <div className="space-y-6">
@@ -47,12 +48,14 @@ export default function PatientsPage() {
             Search by name, email, or phone. Add a patient to start a record.
           </p>
         </div>
-        <Link
-          href="/patients/new"
-          className="inline-flex h-9 items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          Add patient
-        </Link>
+        <MutateOnly>
+          <Link
+            href="/patients/new"
+            className="inline-flex h-9 items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Add patient
+          </Link>
+        </MutateOnly>
       </div>
 
       <form

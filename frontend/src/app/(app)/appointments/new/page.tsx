@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 const STATUSES = ["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
 
 export default function NewAppointmentPage() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientId, setPatientId] = useState("");
@@ -23,15 +23,15 @@ export default function NewAppointmentPage() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!user) return;
     setError(null);
     setPending(true);
     try {
@@ -43,7 +43,7 @@ export default function NewAppointmentPage() {
       };
       if (notes.trim()) body.notes = notes.trim();
 
-      const created = await apiFetchJson<Appointment>("/appointments", token, {
+      const created = await apiFetchJson<Appointment>("/appointments", {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -55,7 +55,7 @@ export default function NewAppointmentPage() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 
