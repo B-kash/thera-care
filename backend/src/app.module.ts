@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { ExercisePlansModule } from './exercise-plans/exercise-plans.module';
 import { PatientsModule } from './patients/patients.module';
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module';
       ],
     }),
     PrismaModule,
+    AuditModule,
     AuthModule,
     UsersModule,
     PatientsModule,

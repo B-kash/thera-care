@@ -1,5 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit-request.util';
+import {
+  AuditAction,
+  AuditEntityType,
+  Prisma,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { ListPatientsQueryDto } from './dto/list-patients-query.dto';
@@ -24,13 +30,17 @@ export type PatientDto = Prisma.PatientGetPayload<{
 
 @Injectable()
 export class PatientsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(
     dto: CreatePatientDto,
     createdByUserId: string,
+    ctx: AuditRequestContext,
   ): Promise<PatientDto> {
-    return this.prisma.patient.create({
+    const row = await this.prisma.patient.create({
       data: {
         firstName: dto.firstName.trim(),
         lastName: dto.lastName.trim(),
@@ -42,6 +52,14 @@ export class PatientsService {
       },
       select: patientSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.PATIENT,
+      entityId: row.id,
+      metadata: { patientId: row.id },
+    });
+    return row;
   }
 
   async findAll(query: ListPatientsQueryDto): Promise<PatientDto[]> {
@@ -80,7 +98,11 @@ export class PatientsService {
     return row;
   }
 
-  async update(id: string, dto: UpdatePatientDto): Promise<PatientDto> {
+  async update(
+    id: string,
+    dto: UpdatePatientDto,
+    ctx: AuditRequestContext,
+  ): Promise<PatientDto> {
     await this.ensureExists(id);
 
     const data: Prisma.PatientUpdateInput = {};
@@ -104,16 +126,31 @@ export class PatientsService {
       data.notes = dto.notes === null ? null : dto.notes.trim();
     }
 
-    return this.prisma.patient.update({
+    const row = await this.prisma.patient.update({
       where: { id },
       data,
       select: patientSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.PATIENT,
+      entityId: id,
+      metadata: { patientId: id },
+    });
+    return row;
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
     await this.ensureExists(id);
     await this.prisma.patient.delete({ where: { id } });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.PATIENT,
+      entityId: id,
+      metadata: { patientId: id },
+    });
   }
 
   private async ensureExists(id: string): Promise<void> {

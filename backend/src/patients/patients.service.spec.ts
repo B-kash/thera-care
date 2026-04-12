@@ -1,10 +1,18 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PatientsService } from './patients.service';
 
+const auditCtx = {
+  actorUserId: 'user-1',
+  ip: null,
+  userAgent: null,
+};
+
 describe('PatientsService', () => {
   let service: PatientsService;
+  const audit = { logEvent: jest.fn().mockResolvedValue(undefined) };
   const prisma = {
     patient: {
       create: jest.fn(),
@@ -22,6 +30,7 @@ describe('PatientsService', () => {
       providers: [
         PatientsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
@@ -38,6 +47,7 @@ describe('PatientsService', () => {
         email: 'a@b.com',
       },
       'user-1',
+      auditCtx,
     );
 
     expect(prisma.patient.create).toHaveBeenCalledWith(

@@ -1,5 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit-request.util';
+import {
+  AuditAction,
+  AuditEntityType,
+  Prisma,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateExerciseItemDto } from './dto/create-exercise-item.dto';
 import { CreateExercisePlanDto } from './dto/create-exercise-plan.dto';
@@ -70,15 +76,19 @@ export type ExerciseItemDto = Prisma.ExerciseItemGetPayload<{
 
 @Injectable()
 export class ExercisePlansService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(
     dto: CreateExercisePlanDto,
     authorUserId: string,
+    ctx: AuditRequestContext,
   ): Promise<ExercisePlanDetailDto> {
     await this.ensurePatientExists(dto.patientId);
 
-    return this.prisma.exercisePlan.create({
+    const row = await this.prisma.exercisePlan.create({
       data: {
         patientId: dto.patientId,
         authorUserId,
@@ -87,6 +97,14 @@ export class ExercisePlansService {
       },
       select: planDetailSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.EXERCISE_PLAN,
+      entityId: row.id,
+      metadata: { exercisePlanId: row.id, patientId: row.patientId },
+    });
+    return row;
   }
 
   async findAllForPatient(
@@ -114,6 +132,7 @@ export class ExercisePlansService {
   async update(
     id: string,
     dto: UpdateExercisePlanDto,
+    ctx: AuditRequestContext,
   ): Promise<ExercisePlanDetailDto> {
     const existing = await this.prisma.exercisePlan.findUnique({
       where: { id },
@@ -133,24 +152,43 @@ export class ExercisePlansService {
           : String(dto.notes).trim();
     }
 
-    return this.prisma.exercisePlan.update({
+    const row = await this.prisma.exercisePlan.update({
       where: { id },
       data,
       select: planDetailSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.EXERCISE_PLAN,
+      entityId: id,
+      metadata: { exercisePlanId: id, patientId: row.patientId },
+    });
+    return row;
   }
 
-  async remove(id: string): Promise<void> {
-    const n = await this.prisma.exercisePlan.count({ where: { id } });
-    if (n === 0) {
+  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
+    const existing = await this.prisma.exercisePlan.findUnique({
+      where: { id },
+      select: { patientId: true },
+    });
+    if (!existing) {
       throw new NotFoundException('Exercise plan not found');
     }
     await this.prisma.exercisePlan.delete({ where: { id } });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.EXERCISE_PLAN,
+      entityId: id,
+      metadata: { exercisePlanId: id, patientId: existing.patientId },
+    });
   }
 
   async addItem(
     planId: string,
     dto: CreateExerciseItemDto,
+    ctx: AuditRequestContext,
   ): Promise<ExerciseItemDto> {
     await this.ensurePlanExists(planId);
 
@@ -158,7 +196,7 @@ export class ExercisePlansService {
       dto.sortOrder ??
       (await this.nextItemSortOrder(planId));
 
-    return this.prisma.exerciseItem.create({
+    const row = await this.prisma.exerciseItem.create({
       data: {
         exercisePlanId: planId,
         name: dto.name.trim(),
@@ -171,12 +209,24 @@ export class ExercisePlansService {
       },
       select: itemSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.EXERCISE_ITEM,
+      entityId: row.id,
+      metadata: {
+        exerciseItemId: row.id,
+        exercisePlanId: planId,
+      },
+    });
+    return row;
   }
 
   async updateItem(
     planId: string,
     itemId: string,
     dto: UpdateExerciseItemDto,
+    ctx: AuditRequestContext,
   ): Promise<ExerciseItemDto> {
     await this.ensureItemBelongsToPlan(planId, itemId);
 
@@ -200,16 +250,35 @@ export class ExercisePlansService {
       data.sortOrder = dto.sortOrder;
     }
 
-    return this.prisma.exerciseItem.update({
+    const row = await this.prisma.exerciseItem.update({
       where: { id: itemId },
       data,
       select: itemSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.EXERCISE_ITEM,
+      entityId: itemId,
+      metadata: { exerciseItemId: itemId, exercisePlanId: planId },
+    });
+    return row;
   }
 
-  async removeItem(planId: string, itemId: string): Promise<void> {
+  async removeItem(
+    planId: string,
+    itemId: string,
+    ctx: AuditRequestContext,
+  ): Promise<void> {
     await this.ensureItemBelongsToPlan(planId, itemId);
     await this.prisma.exerciseItem.delete({ where: { id: itemId } });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.EXERCISE_ITEM,
+      entityId: itemId,
+      metadata: { exerciseItemId: itemId, exercisePlanId: planId },
+    });
   }
 
   private async ensurePatientExists(patientId: string): Promise<void> {
