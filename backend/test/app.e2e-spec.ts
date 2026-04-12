@@ -23,6 +23,14 @@ describe('AppController (e2e)', () => {
           findUnique: async () => null,
           create: async () => ({}),
         },
+        patient: {
+          findMany: async () => [],
+          findUnique: async () => null,
+          create: async () => ({}),
+          update: async () => ({}),
+          delete: async () => ({}),
+          count: async () => 0,
+        },
       })
       .compile();
 
@@ -55,5 +63,9 @@ describe('AppController (e2e)', () => {
 
   it('/users (GET) without token returns 401', () => {
     return request(app.getHttpServer()).get('/users').expect(401);
+  });
+
+  it('/patients (GET) without token returns 401', () => {
+    return request(app.getHttpServer()).get('/patients').expect(401);
   });
 });
