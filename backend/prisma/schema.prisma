@@ -12,31 +12,56 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
 /// Application user (physiotherapist / staff).
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String?   @map("password_hash")
-  displayName  String?   @map("display_name")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  patients     Patient[]
+  id                   String         @id @default(uuid())
+  email                String         @unique
+  passwordHash         String?        @map("password_hash")
+  displayName          String?        @map("display_name")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+  patients             Patient[]
+  appointmentsAsStaff Appointment[] @relation("AppointmentStaffUser")
 
   @@map("users")
 }
 
 model Patient {
-  id              String    @id @default(uuid())
-  firstName       String    @map("first_name")
-  lastName        String    @map("last_name")
+  id              String         @id @default(uuid())
+  firstName       String         @map("first_name")
+  lastName        String         @map("last_name")
   email           String?
   phone           String?
-  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
+  dateOfBirth     DateTime?      @map("date_of_birth") @db.Date
   notes           String?
-  createdByUserId String?   @map("created_by_user_id")
-  createdBy       User?     @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdByUserId String?        @map("created_by_user_id")
+  createdBy       User?          @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  appointments    Appointment[]
 
   @@map("patients")
+}
+
+model Appointment {
+  id          String             @id @default(uuid())
+  patientId   String             @map("patient_id")
+  patient     Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  staffUserId String?            @map("staff_user_id")
+  staffUser   User?              @relation("AppointmentStaffUser", fields: [staffUserId], references: [id], onDelete: SetNull)
+  startsAt    DateTime           @map("starts_at")
+  endsAt      DateTime           @map("ends_at")
+  status      AppointmentStatus  @default(SCHEDULED)
+  notes       String?
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  @@map("appointments")
 }
