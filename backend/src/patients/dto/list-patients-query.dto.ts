@@ -17,6 +17,6 @@ export class ListPatientsQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(500)
   take?: number;
 }
