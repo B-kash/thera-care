@@ -1,0 +1,38 @@
+# dependencies
+node_modules
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# build
+dist
+.next
+coverage
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+
+# prisma generated files if needed
+backend/src/generated
+
+# misc
+*.tsbuildinfo
+
+AGENTS.md
+PRODUCT_SPECS.md
