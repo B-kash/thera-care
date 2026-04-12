@@ -12,7 +12,7 @@ datasource db {
   provider = "postgresql"
 }
 
-/// Application user (physiotherapist / staff). Auth logic comes in a later phase.
+/// Application user (physiotherapist / staff).
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
