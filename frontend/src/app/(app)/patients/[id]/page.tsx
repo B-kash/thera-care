@@ -2,6 +2,7 @@
 
 import { apiFetchJson } from "@/lib/api";
 import type { Patient } from "@/types/patient";
+import type { TreatmentNote } from "@/types/treatment-note";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -31,6 +32,8 @@ export default function PatientDetailPage() {
   const [notes, setNotes] = useState("");
   const [savePending, setSavePending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
+  const [treatmentNotes, setTreatmentNotes] = useState<TreatmentNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -53,10 +56,32 @@ export default function PatientDetailPage() {
     }
   }, [token, id]);
 
+  const loadNotes = useCallback(async () => {
+    if (!token || !id) return;
+    setNotesLoading(true);
+    try {
+      const qs = new URLSearchParams({ patientId: id });
+      const list = await apiFetchJson<TreatmentNote[]>(
+        `/treatment-notes?${qs}`,
+        token,
+      );
+      setTreatmentNotes(list);
+    } catch {
+      setTreatmentNotes([]);
+    } finally {
+      setNotesLoading(false);
+    }
+  }, [token, id]);
+
   useEffect(() => {
     if (!ready || !token) return;
     void load();
   }, [ready, token, load]);
+
+  useEffect(() => {
+    if (!ready || !token || !id) return;
+    void loadNotes();
+  }, [ready, token, id, loadNotes]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +102,7 @@ export default function PatientDetailPage() {
         body: JSON.stringify(body),
       });
       setPatient(updated);
+      void loadNotes();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -131,6 +157,52 @@ export default function PatientDetailPage() {
           {patient.lastName}, {patient.firstName}
         </h1>
       </div>
+
+      <section className="rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold tracking-tight">
+            Treatment notes
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/treatment-notes?patientId=${encodeURIComponent(patient.id)}`}
+              className="text-xs font-medium underline"
+            >
+              View all
+            </Link>
+            <Link
+              href={`/treatment-notes/new?patientId=${encodeURIComponent(patient.id)}`}
+              className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
+            >
+              New note
+            </Link>
+          </div>
+        </div>
+        {notesLoading ? (
+          <p className="mt-2 text-sm text-zinc-500">Loading notes…</p>
+        ) : treatmentNotes.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            No treatment notes yet.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {treatmentNotes.slice(0, 5).map((n) => (
+              <li key={n.id}>
+                <Link
+                  href={`/treatment-notes/${n.id}`}
+                  className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+                >
+                  {new Date(n.createdAt).toLocaleString()}
+                </Link>
+                <p className="mt-0.5 line-clamp-1 text-xs text-zinc-500">
+                  {n.subjective.trim().slice(0, 120)}
+                  {n.subjective.length > 120 ? "…" : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <form className="space-y-4" onSubmit={onSave}>
         <div className="grid gap-4 sm:grid-cols-2">

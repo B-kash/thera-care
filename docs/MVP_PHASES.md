@@ -30,8 +30,8 @@ httpOnly cookies, same-origin / BFF, CSRF, Helmet, rate limits on `/auth/*`—do
 | **2**        | Authentication & users    | **Done:** login/register, bcrypt, JWT, guard, `/users` list, `/auth/me`; token in `localStorage` (security cross-cutting). AGENTS “create user” is covered by **register** + Prisma; no separate admin **POST /users** unless added later. |
 | **3**        | Patient management        | **Done:** CRUD API + UI. |
 | **4**        | Appointments              | **Done:** CRUD, patient + therapist (staff user), status, overlap rule, UI. |
-| **5**        | Treatment notes           | **Next** (SOAP UI + API). |
-| **6**        | Exercise plans            | Planned. |
+| **5**        | Treatment notes           | **Done:** Prisma `TreatmentNote` (SOAP text fields), REST CRUD + optional `appointmentId`, JWT; UI list (`?patientId=`), new/edit, patient profile snippet + links. |
+| **6**        | Exercise plans            | **Next** (backend + UI per AGENTS). |
 | **7**        | Progress tracking         | Planned. |
 | **8**        | Polish & stabilization      | Planned (validation, errors, UI consistency). |
 | **9**        | Optional improvements     | Do not start unless asked (RBAC, audit, etc.). |
@@ -73,10 +73,10 @@ Per AGENTS.md, Phase 1 includes:
 
 ---
 
-## AGENTS Phase 5 — Treatment notes (next)
+## AGENTS Phase 5 — Treatment notes (done)
 
-- Backend: `treatment-notes` module (replace stub with CRUD), Prisma model, link patient + therapist + optional appointment.
-- Frontend: SOAP fields + patient note history (see AGENTS.md).
+- Backend: `TreatmentNote` model; `treatment-notes` module with CRUD, author from JWT, list by `patientId` (+ optional `appointmentId` filter), appointment must match patient.
+- Frontend: `/treatment-notes` (patient picker + list), `/treatment-notes/new`, `/treatment-notes/[id]` SOAP forms; patient detail shows recent notes and links.
 
 ---
 

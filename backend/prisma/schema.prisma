@@ -21,14 +21,15 @@ enum AppointmentStatus {
 
 /// Application user (physiotherapist / staff).
 model User {
-  id                   String         @id @default(uuid())
-  email                String         @unique
-  passwordHash         String?        @map("password_hash")
-  displayName          String?        @map("display_name")
-  createdAt            DateTime       @default(now()) @map("created_at")
-  updatedAt            DateTime       @updatedAt @map("updated_at")
+  id                   String          @id @default(uuid())
+  email                String          @unique
+  passwordHash         String?         @map("password_hash")
+  displayName          String?         @map("display_name")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
   patients             Patient[]
   appointmentsAsStaff Appointment[] @relation("AppointmentStaffUser")
+  treatmentNotes      TreatmentNote[]
 
   @@map("users")
 }
@@ -46,6 +47,7 @@ model Patient {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
   appointments    Appointment[]
+  treatmentNotes  TreatmentNote[]
 
   @@map("patients")
 }
@@ -62,6 +64,25 @@ model Appointment {
   notes       String?
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
+  treatmentNotes TreatmentNote[]
 
   @@map("appointments")
+}
+
+model TreatmentNote {
+  id             String       @id @default(uuid())
+  patientId      String       @map("patient_id")
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  authorUserId   String       @map("author_user_id")
+  author         User         @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  appointmentId  String?      @map("appointment_id")
+  appointment    Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  subjective     String       @db.Text
+  objective      String       @db.Text
+  assessment     String       @db.Text
+  plan           String       @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@map("treatment_notes")
 }
