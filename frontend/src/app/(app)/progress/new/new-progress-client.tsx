@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/components/date-inputs";
 import { apiFetchJson } from "@/lib/api";
 import type { Patient } from "@/types/patient";
 import type { ProgressRecord } from "@/types/progress-record";
@@ -119,11 +120,13 @@ export function NewProgressClient() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium">Visit date *</label>
-          <input
-            type="date"
+          <label htmlFor="progress-new-date" className="block text-xs font-medium">
+            Visit date *
+          </label>
+          <DateInput
+            id="progress-new-date"
+            label="Visit date"
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={recordedOn}
             onChange={(e) => setRecordedOn(e.target.value)}
           />

@@ -1,5 +1,6 @@
 "use client";
 
+import { DateTimeInput } from "@/components/date-inputs";
 import { apiFetchJson } from "@/lib/api";
 import type { Appointment } from "@/types/appointment";
 import { useAuth } from "@/providers/auth-provider";
@@ -75,23 +76,31 @@ export default function AppointmentsPage() {
         }}
       >
         <div>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label
+            htmlFor="apt-filter-from"
+            className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+          >
             Starts on or after
           </label>
-          <input
-            type="datetime-local"
-            className="mt-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+          <DateTimeInput
+            id="apt-filter-from"
+            label="Filter appointments from"
+            className="sm:min-w-[11rem]"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label
+            htmlFor="apt-filter-to"
+            className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+          >
             Starts on or before
           </label>
-          <input
-            type="datetime-local"
-            className="mt-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+          <DateTimeInput
+            id="apt-filter-to"
+            label="Filter appointments to"
+            className="sm:min-w-[11rem]"
             value={to}
             onChange={(e) => setTo(e.target.value)}
           />

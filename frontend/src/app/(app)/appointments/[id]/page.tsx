@@ -1,5 +1,6 @@
 "use client";
 
+import { DateTimeInput } from "@/components/date-inputs";
 import { apiFetchJson } from "@/lib/api";
 import type { Appointment } from "@/types/appointment";
 import type { Patient } from "@/types/patient";
@@ -161,21 +162,25 @@ export default function AppointmentDetailPage() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium">Starts *</label>
-          <input
-            type="datetime-local"
+          <label htmlFor="apt-edit-starts" className="block text-xs font-medium">
+            Starts *
+          </label>
+          <DateTimeInput
+            id="apt-edit-starts"
+            label="Appointment start"
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={startsAt}
             onChange={(e) => setStartsAt(e.target.value)}
           />
         </div>
         <div>
-          <label className="block text-xs font-medium">Ends *</label>
-          <input
-            type="datetime-local"
+          <label htmlFor="apt-edit-ends" className="block text-xs font-medium">
+            Ends *
+          </label>
+          <DateTimeInput
+            id="apt-edit-ends"
+            label="Appointment end"
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={endsAt}
             onChange={(e) => setEndsAt(e.target.value)}
           />

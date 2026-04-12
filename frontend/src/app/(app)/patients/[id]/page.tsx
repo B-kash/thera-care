@@ -5,6 +5,7 @@ import type { Patient } from "@/types/patient";
 import type { ExercisePlanList } from "@/types/exercise-plan";
 import type { ProgressRecord } from "@/types/progress-record";
 import type { TreatmentNote } from "@/types/treatment-note";
+import { DateInput } from "@/components/date-inputs";
 import { canMutateRole, MutateOnly } from "@/components/mutate-only";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
@@ -395,11 +396,13 @@ export default function PatientDetailPage() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium">Date of birth</label>
-          <input
-            type="date"
+          <label htmlFor="patient-dob" className="block text-xs font-medium">
+            Date of birth
+          </label>
+          <DateInput
+            id="patient-dob"
+            label="Date of birth"
             disabled={!canEdit}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
             value={dateOfBirth}
             onChange={(e) => setDateOfBirth(e.target.value)}
           />

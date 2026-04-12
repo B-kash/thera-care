@@ -2,6 +2,7 @@
 
 import { apiFetchJson } from "@/lib/api";
 import type { Patient } from "@/types/patient";
+import { DateInput } from "@/components/date-inputs";
 import { canMutateRole } from "@/components/mutate-only";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
@@ -142,12 +143,15 @@ export function NewPatientForm() {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+          <label
+            htmlFor="new-patient-dob"
+            className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+          >
             Date of birth
           </label>
-          <input
-            type="date"
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+          <DateInput
+            id="new-patient-dob"
+            label="Date of birth"
             value={dateOfBirth}
             onChange={(e) => setDateOfBirth(e.target.value)}
           />
