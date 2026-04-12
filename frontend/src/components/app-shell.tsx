@@ -39,7 +39,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="flex h-12 shrink-0 items-center border-b border-zinc-200 bg-white px-6 text-sm font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
           Thera Care
         </header>
-        <main className="flex-1 px-6 py-8">{children}</main>
+        <main className="flex-1 px-6 py-8">
+          <div className="mx-auto w-full max-w-4xl">{children}</div>
+        </main>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
 import { App } from 'supertest/types';
+import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 
@@ -75,11 +76,14 @@ describe('AppController (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalFilters(new AllExceptionsFilter());
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
+        forbidUnknownValues: true,
         transform: true,
+        validationError: { target: false, value: false },
       }),
     );
     await app.init();
@@ -123,5 +127,18 @@ describe('AppController (e2e)', () => {
 
   it('/progress (GET) without token returns 401', () => {
     return request(app.getHttpServer()).get('/progress').expect(401);
+  });
+
+  it('unknown route returns JSON 404 with path', () => {
+    return request(app.getHttpServer())
+      .get('/this-route-does-not-exist-xyz')
+      .expect(404)
+      .expect((res) => {
+        expect(res.body).toMatchObject({
+          statusCode: 404,
+          path: '/this-route-does-not-exist-xyz',
+        });
+        expect(res.body.message).toBeDefined();
+      });
   });
 });

@@ -33,7 +33,7 @@ httpOnly cookies, same-origin / BFF, CSRF, Helmet, rate limits on `/auth/*`—do
 | **5**        | Treatment notes           | **Done:** Prisma `TreatmentNote` (SOAP text fields), REST CRUD + optional `appointmentId`, JWT; UI list (`?patientId=`), new/edit, patient profile snippet + links. |
 | **6**        | Exercise plans            | **Done:** `ExercisePlan` + `ExerciseItem`, patient + author; REST plan CRUD + item CRUD under plan; JWT; UI `?patientId=` list, new, detail with items; patient profile snippet. |
 | **7**        | Progress tracking         | **Done:** `ProgressRecord` (pain 0–10, optional mobility 0–100, notes, `recordedOn` date); JWT CRUD; list `?patientId=`; UI charts + history; patient snippet. |
-| **8**        | Polish & stabilization      | **Next** (validation pass, UX consistency per AGENTS). |
+| **8**        | Polish & stabilization      | **Done (baseline):** Helmet + `crossOriginResourcePolicy: cross-origin`; global `AllExceptionsFilter` (Prisma known codes + validation + `path` on errors); `ValidationPipe` `forbidUnknownValues` + `validationError` target off; e2e wires same filter/pipe as `main`. Frontend app shell `max-w-4xl` content column. Further polish = iterative PRs. |
 | **9**        | Optional improvements     | Do not start unless asked (RBAC, audit, etc.). |
 
 ---
@@ -45,7 +45,7 @@ Per AGENTS.md, Phase 1 includes:
 - [x] Prisma + PostgreSQL + `.env`
 - [x] `PrismaModule` + `PrismaService`
 - [x] `ConfigModule` (global)
-- [x] Global `ValidationPipe`
+- [x] Global `ValidationPipe` (Phase 8: stricter options + global exception filter + Helmet in `main.ts`; e2e mirrors filter/pipe)
 - [x] **Swagger** at `/api/docs` (Bearer auth)
 - [x] Module scaffolds: `auth`, `users`, `patients`, `appointments`, **`treatment-notes`** (Phase 5), **`exercise-plans`** (Phase 6), **`progress`** (Phase 7)
 - [x] Frontend base layout: **sidebar + header** + routes: `/login`, `/dashboard`, `/patients`, `/appointments`, **`/treatment-notes`**, **`/exercise-plans`**, **`/progress`** (Phase 7 UI)
@@ -94,9 +94,11 @@ Per AGENTS.md, Phase 1 includes:
 
 ---
 
-## AGENTS Phase 8 — Polish & stabilization
+## AGENTS Phase 8 — Polish & stabilization (baseline done)
 
-- Validation, error handling, UI consistency, duplication removal.
+- Backend: **Helmet** (with CORS-friendly `crossOriginResourcePolicy`); **`AllExceptionsFilter`** for consistent JSON errors (`statusCode`, `message`, `path`) + Prisma `P2002` / `P2025` / `P2003` mapping + generic handling; **ValidationPipe** `forbidUnknownValues` + hide validation `target`/`value` in errors.
+- Frontend: **App shell** wraps main content in `max-w-4xl` for consistent reading width (feature pages keep their own inner max-width where needed).
+- Tests: e2e registers same filter/pipe as production bootstrap; smoke test for unknown-route JSON shape.
 
 ---
 
