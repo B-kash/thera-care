@@ -30,6 +30,7 @@ export function AppointmentsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const explicitView = searchParams.get("view");
+  const calViewParam = searchParams.get("calView");
 
   const tab = useMemo<"list" | "calendar">(() => {
     if (explicitView === "calendar") return "calendar";
@@ -38,8 +39,12 @@ export function AppointmentsClient() {
   }, [explicitView]);
 
   const calMode = useMemo(
-    () => resolveAppointmentsCalMode(searchParams),
-    [searchParams],
+    () =>
+      resolveAppointmentsCalMode({
+        get: (name: string) =>
+          name === "calView" ? calViewParam : null,
+      }),
+    [calViewParam],
   );
 
   const [calendarTabHref, setCalendarTabHref] = useState(
@@ -52,17 +57,25 @@ export function AppointmentsClient() {
 
   useEffect(() => {
     if (explicitView != null) return;
-    if (readStoredAppointmentsTab() === "calendar") {
-      router.replace(appointmentsCalendarHref());
+    if (readStoredAppointmentsTab() !== "calendar") return;
+    const target = appointmentsCalendarHref();
+    if (typeof window !== "undefined") {
+      const cur = `${window.location.pathname}${window.location.search}`;
+      if (cur === target) return;
     }
+    router.replace(target);
   }, [explicitView, router]);
 
   useEffect(() => {
     if (explicitView !== "calendar") return;
-    const cv = searchParams.get("calView");
-    if (cv === "week" || cv === "month") return;
-    router.replace(appointmentsCalendarHref());
-  }, [explicitView, searchParams, router]);
+    if (calViewParam === "week" || calViewParam === "month") return;
+    const target = appointmentsCalendarHref();
+    if (typeof window !== "undefined") {
+      const cur = `${window.location.pathname}${window.location.search}`;
+      if (cur === target) return;
+    }
+    router.replace(target);
+  }, [explicitView, calViewParam, router]);
 
   const { user, ready } = useAuth();
   const [from, setFrom] = useState("");

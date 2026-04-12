@@ -3,7 +3,12 @@
  * - Postgres on 5433: if already reachable, skip Docker (no restart).
  * - Else: `docker compose up -d --no-recreate`
  * - seed .env / .env.local from *.example when missing
- * - npm install in backend + frontend when node_modules missing
+ * - npm install in backend + frontend when node_modules missing **or** package-lock
+ *   fingerprint changed since last dev run (branch switch). First run with both
+ *   node_modules present but no stamp: writes stamp only (no reinstall).
+ * - After lock-driven reinstall: remove frontend/.next (stale Turbopack cache).
+ *   Opt out: THERA_SKIP_CLEAN_NEXT=1
+ * - Force reinstall + clean: THERA_SYNC_DEPS=1
  * - prisma migrate + generate (optional THERA_SKIP_MIGRATE=1)
  *
  * Run modes after setup:
@@ -12,8 +17,15 @@
  * - THERA_SPLIT_TERMINALS=1 + win32: opens two cmd windows (web, then API). Docker
  *   already ran in this shell; close each window to stop that server. This process exits.
  */
+import { createHash } from "node:crypto";
 import { spawn, execSync } from "node:child_process";
-import { copyFileSync, existsSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import net from "node:net";
@@ -38,6 +50,34 @@ const prefixLogs =
 const splitTerminals =
   process.env.THERA_SPLIT_TERMINALS === "1" ||
   process.env.THERA_SPLIT_TERMINALS === "true";
+
+const lockStampPath = join(root, ".thera-dev-lock-stamp");
+const forceSyncDeps =
+  process.env.THERA_SYNC_DEPS === "1" ||
+  process.env.THERA_SYNC_DEPS === "true";
+const skipCleanNext =
+  process.env.THERA_SKIP_CLEAN_NEXT === "1" ||
+  process.env.THERA_SKIP_CLEAN_NEXT === "true";
+
+function lockFingerprint() {
+  const chunks = [backendRoot, frontendRoot].map((dir) => {
+    const p = join(dir, "package-lock.json");
+    return existsSync(p) ? readFileSync(p) : Buffer.alloc(0);
+  });
+  return createHash("sha256").update(Buffer.concat(chunks)).digest("hex");
+}
+
+function readLockStamp() {
+  try {
+    return readFileSync(lockStampPath, "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+function writeLockStamp(fp) {
+  writeFileSync(lockStampPath, `${fp}\n`, "utf8");
+}
 
 function runRoot(cmd) {
   execSync(cmd, { cwd: root, stdio: "inherit", shell: true });
@@ -156,13 +196,43 @@ async function runSetup() {
     "frontend/.env.local",
   );
 
-  if (!existsSync(join(backendRoot, "node_modules"))) {
-    console.log("Installing backend dependencies…\n");
-    runIn(backendRoot, "npm install");
-  }
-  if (!existsSync(join(frontendRoot, "node_modules"))) {
-    console.log("Installing frontend dependencies…\n");
-    runIn(frontendRoot, "npm install");
+  const fp = lockFingerprint();
+  const stamp = readLockStamp();
+  const backendNm = join(backendRoot, "node_modules");
+  const frontendNm = join(frontendRoot, "node_modules");
+  const bothNm = existsSync(backendNm) && existsSync(frontendNm);
+  const depsStale = Boolean(fp) && Boolean(stamp) && fp !== stamp;
+  const coldStart = !bothNm;
+
+  if (!stamp && bothNm && !forceSyncDeps) {
+    writeLockStamp(fp);
+    console.log(
+      "Lock stamp initialized (.thera-dev-lock-stamp). Future runs reinstall when package-lock.json changes.\n",
+    );
+  } else if (forceSyncDeps || coldStart || depsStale) {
+    if (forceSyncDeps) {
+      console.log("THERA_SYNC_DEPS=1 — reinstalling backend + frontend…\n");
+    } else if (depsStale) {
+      console.log(
+        "package-lock.json changed since last dev run — reinstalling deps (branch switch?).\n",
+      );
+    }
+    if (!existsSync(backendNm) || forceSyncDeps || depsStale) {
+      console.log("Installing backend dependencies…\n");
+      runIn(backendRoot, "npm install");
+    }
+    if (!existsSync(frontendNm) || forceSyncDeps || depsStale) {
+      console.log("Installing frontend dependencies…\n");
+      runIn(frontendRoot, "npm install");
+    }
+    if ((depsStale || forceSyncDeps) && !skipCleanNext) {
+      const nextDir = join(frontendRoot, ".next");
+      if (existsSync(nextDir)) {
+        console.log("Removing frontend/.next (stale build cache)…\n");
+        rmSync(nextDir, { recursive: true, force: true });
+      }
+    }
+    if (fp) writeLockStamp(fp);
   }
 
   if (skipMigrate) {

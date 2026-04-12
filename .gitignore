@@ -33,6 +33,7 @@ backend/src/generated
 
 # misc
 *.tsbuildinfo
+.thera-dev-lock-stamp
 
 AGENTS.md
 PRODUCT_SPECS.md

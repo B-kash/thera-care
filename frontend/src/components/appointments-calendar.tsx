@@ -95,7 +95,19 @@ export function AppointmentsCalendar({ patientIdFilter, calMode }: Props) {
     qs.set("view", "calendar");
     qs.set("calView", mode);
     if (patientIdFilter) qs.set("patientId", patientIdFilter);
-    router.replace(`/appointments?${qs.toString()}`, { scroll: false });
+    const nextPath = `/appointments?${qs.toString()}`;
+    // RBC often calls onView when controlled `view` syncs; unconditional replace → RSC refetch storm + broken UI.
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (
+        sp.get("view") === "calendar" &&
+        sp.get("calView") === mode &&
+        (patientIdFilter ? sp.get("patientId") === patientIdFilter : !sp.get("patientId"))
+      ) {
+        return;
+      }
+    }
+    router.replace(nextPath, { scroll: false });
   }
 
   function openNewAtSlot(slot: SlotInfo) {
