@@ -30,6 +30,7 @@ model User {
   patients             Patient[]
   appointmentsAsStaff Appointment[] @relation("AppointmentStaffUser")
   treatmentNotes      TreatmentNote[]
+  exercisePlans       ExercisePlan[]
 
   @@map("users")
 }
@@ -48,6 +49,7 @@ model Patient {
   updatedAt       DateTime       @updatedAt @map("updated_at")
   appointments    Appointment[]
   treatmentNotes  TreatmentNote[]
+  exercisePlans   ExercisePlan[]
 
   @@map("patients")
 }
@@ -85,4 +87,34 @@ model TreatmentNote {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@map("treatment_notes")
+}
+
+model ExercisePlan {
+  id             String         @id @default(uuid())
+  patientId      String         @map("patient_id")
+  patient        Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  authorUserId   String         @map("author_user_id")
+  author         User           @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  title          String
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  items          ExerciseItem[]
+
+  @@map("exercise_plans")
+}
+
+model ExerciseItem {
+  id             String       @id @default(uuid())
+  exercisePlanId String       @map("exercise_plan_id")
+  exercisePlan   ExercisePlan @relation(fields: [exercisePlanId], references: [id], onDelete: Cascade)
+  name           String
+  instructions   String?      @db.Text
+  sets           Int?
+  reps           Int?
+  sortOrder      Int          @default(0) @map("sort_order")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@map("exercise_items")
 }
