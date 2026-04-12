@@ -20,6 +20,10 @@ A full-stack physiotherapist management application.
 
 See [docs/MVP_PHASES.md](docs/MVP_PHASES.md) for phased delivery
 
+## Before production
+
+See **[docs/GO_LIVE_CHECKLIST.md](docs/GO_LIVE_CHECKLIST.md)** for security, data, RBAC, backups, and ops items to complete (or consciously defer) before go-live.
+
 ## Run locally
 
 ### One command (recommended)
