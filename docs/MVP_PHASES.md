@@ -144,24 +144,26 @@ This document tracks phased delivery for the Thera Care monorepo (Next.js fronte
 
 ---
 
-## Phase 4 — Appointments
+## Phase 4 — Appointments (done)
 
 **Goal:** Schedule appointments linked to patients (and optionally users).
 
+**Delivered:** `AppointmentStatus` enum; **`Appointment`** with `startsAt` / `endsAt`, `status`, `notes`, `patient`, optional **`staffUser`** (defaults to JWT user on create); overlap check per **patient**; REST under **`/appointments`** (JWT). UI: **`/appointments`** list + date filter, **`/appointments/new`**, **`/appointments/[id]`** with link to patient.
+
 ### Backend (`appointments` module)
 
-- Prisma **`Appointment`** model (patient relation, start/end or single datetime, status, notes, optional user relation).
+- Prisma **`Appointment`** + **`AppointmentStatus`** (`SCHEDULED`, `COMPLETED`, `CANCELLED`, `NO_SHOW`).
 - Migration(s).
-- DTOs + validated create/update/list (filter by date range, patient).
-- **Conflict rules** (simple overlap check MVP).
-- Controllers thin; services own scheduling logic.
-- **Seeding:** optional demo appointments (cross-cutting table).
+- DTOs + list query (`patientId`, `from`, `to` on **`startsAt`**, `skip`, `take`).
+- **Conflict rule:** no overlapping `[startsAt, ends)` for the same **patient** (create + update).
+- Controllers thin; **`AppointmentsService`** owns overlap + range validation.
+- **Seeding:** still optional (cross-cutting table).
 
 ### Frontend
 
-- **`/appointments`**: calendar or list view (pick simplest usable MVP).
-- Create/edit appointment flows; link to patient.
-- Dashboard can later surface “today’s appointments” (optional in this phase or stub).
+- **`/appointments`**: table list + **datetime-local** filter (converted to ISO for the API).
+- **`/appointments/new`**, **`/appointments/[id]`**: patient select (from **`GET /patients`**), times, status, notes; delete.
+- Link from list to **patient** detail.
 
 ---
 
