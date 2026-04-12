@@ -39,20 +39,30 @@ export class TreatmentNotesController {
     return this.treatmentNotesService.create(
       dto,
       req.user.userId,
+      req.user.tenantId,
       auditContextFromRequest(req),
     );
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findAllForPatient(@Query() query: ListTreatmentNotesQueryDto) {
-    return this.treatmentNotesService.findAllForPatient(query);
+  findAllForPatient(
+    @Query() query: ListTreatmentNotesQueryDto,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.treatmentNotesService.findAllForPatient(
+      req.user.tenantId,
+      query,
+    );
   }
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.treatmentNotesService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.treatmentNotesService.findOne(req.user.tenantId, id);
   }
 
   @Patch(':id')
@@ -63,6 +73,7 @@ export class TreatmentNotesController {
     @Req() req: Request & { user: RequestUser },
   ) {
     return this.treatmentNotesService.update(
+      req.user.tenantId,
       id,
       dto,
       auditContextFromRequest(req),
@@ -76,6 +87,10 @@ export class TreatmentNotesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request & { user: RequestUser },
   ) {
-    await this.treatmentNotesService.remove(id, auditContextFromRequest(req));
+    await this.treatmentNotesService.remove(
+      req.user.tenantId,
+      id,
+      auditContextFromRequest(req),
+    );
   }
 }

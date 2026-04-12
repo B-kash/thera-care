@@ -136,7 +136,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <span className="truncate">Thera Care</span>
           </div>
-          <span className="hidden md:inline">Thera Care</span>
+          <div className="hidden min-w-0 flex-1 items-baseline gap-2 md:flex">
+            <span className="shrink-0">Thera Care</span>
+            {user?.tenant ? (
+              <span
+                className="truncate text-xs font-normal text-muted-foreground"
+                title={`Clinic: ${user.tenant.name} (${user.tenant.slug})`}
+              >
+                {user.tenant.name}
+              </span>
+            ) : null}
+          </div>
           <ThemeSwitcher />
         </header>
         <main className="flex-1 px-4 py-6 sm:px-6 md:py-8">
