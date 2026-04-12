@@ -1,14 +1,14 @@
 import { Suspense } from "react";
-import { TreatmentNotesClient } from "./treatment-notes-client";
+import { NewTreatmentNoteClient } from "./new-treatment-note-client";
 
-export default function TreatmentNotesPage() {
+export default function NewTreatmentNotePage() {
   return (
     <Suspense
       fallback={
         <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>
       }
     >
-      <TreatmentNotesClient />
+      <NewTreatmentNoteClient />
     </Suspense>
   );
 }
