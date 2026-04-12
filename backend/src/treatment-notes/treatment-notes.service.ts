@@ -3,7 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit-request.util';
+import {
+  AuditAction,
+  AuditEntityType,
+  Prisma,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTreatmentNoteDto } from './dto/create-treatment-note.dto';
 import { ListTreatmentNotesQueryDto } from './dto/list-treatment-notes-query.dto';
@@ -37,11 +43,15 @@ export type TreatmentNoteDto = Prisma.TreatmentNoteGetPayload<{
 
 @Injectable()
 export class TreatmentNotesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(
     dto: CreateTreatmentNoteDto,
     authorUserId: string,
+    ctx: AuditRequestContext,
   ): Promise<TreatmentNoteDto> {
     await this.ensurePatientExists(dto.patientId);
     if (dto.appointmentId) {
@@ -51,7 +61,7 @@ export class TreatmentNotesService {
       );
     }
 
-    return this.prisma.treatmentNote.create({
+    const row = await this.prisma.treatmentNote.create({
       data: {
         patientId: dto.patientId,
         authorUserId,
@@ -63,6 +73,14 @@ export class TreatmentNotesService {
       },
       select: noteSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.TREATMENT_NOTE,
+      entityId: row.id,
+      metadata: { treatmentNoteId: row.id, patientId: row.patientId },
+    });
+    return row;
   }
 
   async findAllForPatient(
@@ -94,7 +112,11 @@ export class TreatmentNotesService {
     return row;
   }
 
-  async update(id: string, dto: UpdateTreatmentNoteDto): Promise<TreatmentNoteDto> {
+  async update(
+    id: string,
+    dto: UpdateTreatmentNoteDto,
+    ctx: AuditRequestContext,
+  ): Promise<TreatmentNoteDto> {
     const existing = await this.prisma.treatmentNote.findUnique({
       where: { id },
     });
@@ -129,19 +151,37 @@ export class TreatmentNotesService {
       data.plan = dto.plan.trim();
     }
 
-    return this.prisma.treatmentNote.update({
+    const row = await this.prisma.treatmentNote.update({
       where: { id },
       data,
       select: noteSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.TREATMENT_NOTE,
+      entityId: id,
+      metadata: { treatmentNoteId: id, patientId: row.patientId },
+    });
+    return row;
   }
 
-  async remove(id: string): Promise<void> {
-    const n = await this.prisma.treatmentNote.count({ where: { id } });
-    if (n === 0) {
+  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
+    const existing = await this.prisma.treatmentNote.findUnique({
+      where: { id },
+      select: { patientId: true },
+    });
+    if (!existing) {
       throw new NotFoundException('Treatment note not found');
     }
     await this.prisma.treatmentNote.delete({ where: { id } });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.TREATMENT_NOTE,
+      entityId: id,
+      metadata: { treatmentNoteId: id, patientId: existing.patientId },
+    });
   }
 
   private async ensurePatientExists(patientId: string): Promise<void> {

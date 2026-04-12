@@ -19,6 +19,7 @@ import { UserRole } from '../generated/prisma/client';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import type { RequestUser } from '../auth/strategies/jwt.strategy';
+import { auditContextFromRequest } from '../audit/audit-request.util';
 import { CreateExerciseItemDto } from './dto/create-exercise-item.dto';
 import { CreateExercisePlanDto } from './dto/create-exercise-plan.dto';
 import { ListExercisePlansQueryDto } from './dto/list-exercise-plans-query.dto';
@@ -37,7 +38,11 @@ export class ExercisePlansController {
     @Body() dto: CreateExercisePlanDto,
     @Req() req: Request & { user: RequestUser },
   ) {
-    return this.exercisePlansService.create(dto, req.user.userId);
+    return this.exercisePlansService.create(
+      dto,
+      req.user.userId,
+      auditContextFromRequest(req),
+    );
   }
 
   @Get()
@@ -57,15 +62,23 @@ export class ExercisePlansController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateExercisePlanDto,
+    @Req() req: Request & { user: RequestUser },
   ) {
-    return this.exercisePlansService.update(id, dto);
+    return this.exercisePlansService.update(
+      id,
+      dto,
+      auditContextFromRequest(req),
+    );
   }
 
   @Delete(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
-    await this.exercisePlansService.remove(id);
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    await this.exercisePlansService.remove(id, auditContextFromRequest(req));
   }
 
   @Post(':id/items')
@@ -73,8 +86,13 @@ export class ExercisePlansController {
   addItem(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateExerciseItemDto,
+    @Req() req: Request & { user: RequestUser },
   ) {
-    return this.exercisePlansService.addItem(id, dto);
+    return this.exercisePlansService.addItem(
+      id,
+      dto,
+      auditContextFromRequest(req),
+    );
   }
 
   @Patch(':id/items/:itemId')
@@ -83,8 +101,14 @@ export class ExercisePlansController {
     @Param('id', ParseUUIDPipe) id: string,
     @Param('itemId', ParseUUIDPipe) itemId: string,
     @Body() dto: UpdateExerciseItemDto,
+    @Req() req: Request & { user: RequestUser },
   ) {
-    return this.exercisePlansService.updateItem(id, itemId, dto);
+    return this.exercisePlansService.updateItem(
+      id,
+      itemId,
+      dto,
+      auditContextFromRequest(req),
+    );
   }
 
   @Delete(':id/items/:itemId')
@@ -93,7 +117,12 @@ export class ExercisePlansController {
   async removeItem(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('itemId', ParseUUIDPipe) itemId: string,
+    @Req() req: Request & { user: RequestUser },
   ) {
-    await this.exercisePlansService.removeItem(id, itemId);
+    await this.exercisePlansService.removeItem(
+      id,
+      itemId,
+      auditContextFromRequest(req),
+    );
   }
 }

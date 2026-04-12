@@ -4,7 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit-request.util';
+import {
+  AuditAction,
+  AuditEntityType,
+  Prisma,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { ListAppointmentsQueryDto } from './dto/list-appointments-query.dto';
@@ -34,11 +40,15 @@ export type AppointmentDto = Prisma.AppointmentGetPayload<{
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(
     dto: CreateAppointmentDto,
     defaultStaffUserId: string,
+    ctx: AuditRequestContext,
   ): Promise<AppointmentDto> {
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
@@ -61,7 +71,7 @@ export class AppointmentsService {
 
     await this.assertNoOverlap(dto.patientId, startsAt, endsAt);
 
-    return this.prisma.appointment.create({
+    const row = await this.prisma.appointment.create({
       data: {
         patientId: dto.patientId,
         staffUserId,
@@ -72,6 +82,14 @@ export class AppointmentsService {
       },
       select: appointmentSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.CREATE,
+      entityType: AuditEntityType.APPOINTMENT,
+      entityId: row.id,
+      metadata: { appointmentId: row.id, patientId: row.patientId },
+    });
+    return row;
   }
 
   async findAll(query: ListAppointmentsQueryDto): Promise<AppointmentDto[]> {
@@ -113,7 +131,11 @@ export class AppointmentsService {
     return row;
   }
 
-  async update(id: string, dto: UpdateAppointmentDto): Promise<AppointmentDto> {
+  async update(
+    id: string,
+    dto: UpdateAppointmentDto,
+    ctx: AuditRequestContext,
+  ): Promise<AppointmentDto> {
     const existing = await this.prisma.appointment.findUnique({
       where: { id },
     });
@@ -170,19 +192,37 @@ export class AppointmentsService {
         dto.notes === null ? null : (dto.notes as string).trim() || null;
     }
 
-    return this.prisma.appointment.update({
+    const row = await this.prisma.appointment.update({
       where: { id },
       data,
       select: appointmentSelect,
     });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.UPDATE,
+      entityType: AuditEntityType.APPOINTMENT,
+      entityId: id,
+      metadata: { appointmentId: id, patientId: row.patientId },
+    });
+    return row;
   }
 
-  async remove(id: string): Promise<void> {
-    const n = await this.prisma.appointment.count({ where: { id } });
-    if (n === 0) {
+  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
+    const existing = await this.prisma.appointment.findUnique({
+      where: { id },
+      select: { patientId: true },
+    });
+    if (!existing) {
       throw new NotFoundException('Appointment not found');
     }
     await this.prisma.appointment.delete({ where: { id } });
+    await this.audit.logEvent({
+      context: ctx,
+      action: AuditAction.DELETE,
+      entityType: AuditEntityType.APPOINTMENT,
+      entityId: id,
+      metadata: { appointmentId: id, patientId: existing.patientId },
+    });
   }
 
   private assertValidRange(startsAt: Date, endsAt: Date): void {
