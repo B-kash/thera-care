@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: thera-care-backend
+  labels:
+    app.kubernetes.io/name: thera-care-backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4000
+      targetPort: http
+      name: http
+  selector:
+    app.kubernetes.io/name: thera-care-backend

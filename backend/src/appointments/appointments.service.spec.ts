@@ -1,10 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppointmentsService } from './appointments.service';
 
+const ctx = { actorUserId: 'u1', ip: null, userAgent: null };
+
 describe('AppointmentsService', () => {
   let service: AppointmentsService;
+  const audit = { logEvent: jest.fn().mockResolvedValue(undefined) };
   const prisma = {
     patient: { findUnique: jest.fn() },
     user: { findUnique: jest.fn() },
@@ -24,6 +28,7 @@ describe('AppointmentsService', () => {
       providers: [
         AppointmentsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
@@ -42,6 +47,7 @@ describe('AppointmentsService', () => {
           endsAt: '2026-04-12T13:00:00.000Z',
         },
         'u1',
+        ctx,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });

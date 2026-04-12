@@ -189,7 +189,7 @@ export class AppointmentsService {
     }
     if (dto.notes !== undefined) {
       data.notes =
-        dto.notes === null ? null : (dto.notes as string).trim() || null;
+        dto.notes === null ? null : String(dto.notes).trim() || null;
     }
 
     const row = await this.prisma.appointment.update({

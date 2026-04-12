@@ -50,8 +50,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [systemDark, setSystemDark] = useState(false);
 
   useEffect(() => {
+    /* After mount: sync from localStorage (defaults on server for SSR). */
+    /* eslint-disable react-hooks/set-state-in-effect -- intentional client rehydration */
     setPaletteState(readStoredPalette());
     setModeState(readStoredMode());
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {

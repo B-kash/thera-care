@@ -24,6 +24,11 @@ See [docs/MVP_PHASES.md](docs/MVP_PHASES.md) for phased delivery
 
 See **[docs/GO_LIVE_CHECKLIST.md](docs/GO_LIVE_CHECKLIST.md)** for security, data, RBAC, backups, and ops items to complete (or consciously defer) before go-live.
 
+## CI and deployment
+
+- **Pull request CI:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs backend lint/tests/build and frontend lint/build.
+- **Operations docs:** [docs/DEVOPS.md](docs/DEVOPS.md) (branch protection, migrations, rollback expectations) and [docs/KUBERNETES_RUNBOOK.md](docs/KUBERNETES_RUNBOOK.md) (image tagging, rollback, observability). Example manifests: [`infra/k8s/`](infra/k8s/README.md).
+
 ## Run locally
 
 ### One command (recommended)

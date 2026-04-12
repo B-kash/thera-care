@@ -1,7 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import cookieParser = require('cookie-parser');
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { AppModule } from './app.module';
@@ -41,4 +41,4 @@ async function bootstrap() {
   const port = Number(process.env.PORT ?? 4000);
   await app.listen(port);
 }
-bootstrap();
+void bootstrap();
