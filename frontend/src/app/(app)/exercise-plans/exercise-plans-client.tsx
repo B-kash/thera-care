@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 export function ExercisePlansClient() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientIdFromUrl = searchParams.get("patientId") ?? "";
@@ -20,7 +20,7 @@ export function ExercisePlansClient() {
   const [error, setError] = useState<string | null>(null);
 
   const loadPlans = useCallback(async () => {
-    if (!token || !patientIdFromUrl) {
+    if (!user || !patientIdFromUrl) {
       setRows([]);
       setLoading(false);
       return;
@@ -31,7 +31,6 @@ export function ExercisePlansClient() {
       const qs = new URLSearchParams({ patientId: patientIdFromUrl });
       const data = await apiFetchJson<ExercisePlanList[]>(
         `/exercise-plans?${qs}`,
-        token,
       );
       setRows(data);
     } catch (e) {
@@ -40,21 +39,21 @@ export function ExercisePlansClient() {
     } finally {
       setLoading(false);
     }
-  }, [token, patientIdFromUrl]);
+  }, [user, patientIdFromUrl]);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void loadPlans();
-  }, [ready, token, loadPlans]);
+  }, [ready, user, loadPlans]);
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 

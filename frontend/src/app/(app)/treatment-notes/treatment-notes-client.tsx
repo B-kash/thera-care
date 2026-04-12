@@ -15,7 +15,7 @@ function formatWhen(iso: string): string {
 }
 
 export function TreatmentNotesClient() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientIdFromUrl = searchParams.get("patientId") ?? "";
@@ -26,7 +26,7 @@ export function TreatmentNotesClient() {
   const [error, setError] = useState<string | null>(null);
 
   const loadNotes = useCallback(async () => {
-    if (!token || !patientIdFromUrl) {
+    if (!user || !patientIdFromUrl) {
       setRows([]);
       setLoading(false);
       return;
@@ -37,7 +37,6 @@ export function TreatmentNotesClient() {
       const qs = new URLSearchParams({ patientId: patientIdFromUrl });
       const data = await apiFetchJson<TreatmentNote[]>(
         `/treatment-notes?${qs}`,
-        token,
       );
       setRows(data);
     } catch (e) {
@@ -46,21 +45,21 @@ export function TreatmentNotesClient() {
     } finally {
       setLoading(false);
     }
-  }, [token, patientIdFromUrl]);
+  }, [user, patientIdFromUrl]);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void loadNotes();
-  }, [ready, token, loadNotes]);
+  }, [ready, user, loadNotes]);
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 

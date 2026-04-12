@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export function LoginForm() {
-  const { ready, token, login, register } = useAuth();
+  const { ready, user, login, register } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") ?? "/dashboard";
@@ -19,9 +19,9 @@ export function LoginForm() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     router.replace(nextPath.startsWith("/") ? nextPath : "/dashboard");
-  }, [ready, token, router, nextPath]);
+  }, [ready, user, router, nextPath]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,7 +51,7 @@ export function LoginForm() {
     );
   }
 
-  if (token) {
+  if (user) {
     return (
       <div className="text-sm text-zinc-500 dark:text-zinc-400">Redirecting…</div>
     );

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import type { UserRole } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -36,7 +37,9 @@ export class AuthService {
       },
     });
 
-    return { accessToken: await this.signAccessToken(user.id, user.email) };
+    return {
+      accessToken: await this.signAccessToken(user.id, user.email, user.role),
+    };
   }
 
   async login(dto: LoginDto): Promise<{ accessToken: string }> {
@@ -52,7 +55,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    return { accessToken: await this.signAccessToken(user.id, user.email) };
+    return {
+      accessToken: await this.signAccessToken(user.id, user.email, user.role),
+    };
   }
 
   async getProfile(userId: string) {
@@ -62,6 +67,7 @@ export class AuthService {
         id: true,
         email: true,
         displayName: true,
+        role: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -72,8 +78,12 @@ export class AuthService {
     return user;
   }
 
-  private signAccessToken(userId: string, email: string): Promise<string> {
-    const payload: AccessTokenPayload = { sub: userId, email };
+  private signAccessToken(
+    userId: string,
+    email: string,
+    role: UserRole,
+  ): Promise<string> {
+    const payload: AccessTokenPayload = { sub: userId, email, role };
     return this.jwt.signAsync(payload);
   }
 }

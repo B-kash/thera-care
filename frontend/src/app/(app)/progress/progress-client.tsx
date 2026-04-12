@@ -21,7 +21,7 @@ function shortDate(iso: string): string {
 }
 
 export function ProgressClient() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientIdFromUrl = searchParams.get("patientId") ?? "";
@@ -32,7 +32,7 @@ export function ProgressClient() {
   const [error, setError] = useState<string | null>(null);
 
   const loadRows = useCallback(async () => {
-    if (!token || !patientIdFromUrl) {
+    if (!user || !patientIdFromUrl) {
       setRows([]);
       setLoading(false);
       return;
@@ -41,7 +41,7 @@ export function ProgressClient() {
     setError(null);
     try {
       const qs = new URLSearchParams({ patientId: patientIdFromUrl });
-      const data = await apiFetchJson<ProgressRecord[]>(`/progress?${qs}`, token);
+      const data = await apiFetchJson<ProgressRecord[]>(`/progress?${qs}`);
       setRows(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load progress");
@@ -49,19 +49,19 @@ export function ProgressClient() {
     } finally {
       setLoading(false);
     }
-  }, [token, patientIdFromUrl]);
+  }, [user, patientIdFromUrl]);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void loadRows();
-  }, [ready, token, loadRows]);
+  }, [ready, user, loadRows]);
 
   const vizSeries = useMemo(() => {
     if (rows.length === 0) return [];
@@ -70,7 +70,7 @@ export function ProgressClient() {
     return slice.slice().reverse();
   }, [rows]);
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 

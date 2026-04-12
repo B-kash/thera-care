@@ -20,7 +20,7 @@ function toLocalInput(iso: string): string {
 export default function AppointmentDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
 
   const [apt, setApt] = useState<Appointment | null>(null);
@@ -36,11 +36,11 @@ export default function AppointmentDetailPage() {
   const [deletePending, setDeletePending] = useState(false);
 
   const load = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setLoading(true);
     setError(null);
     try {
-      const a = await apiFetchJson<Appointment>(`/appointments/${id}`, token);
+      const a = await apiFetchJson<Appointment>(`/appointments/${id}`);
       setApt(a);
       setPatientId(a.patientId);
       setStartsAt(toLocalInput(a.startsAt));
@@ -53,27 +53,27 @@ export default function AppointmentDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void load();
-  }, [ready, token, load]);
+  }, [ready, user, load]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!user) return;
     setSavePending(true);
     setError(null);
     try {
-      const updated = await apiFetchJson<Appointment>(`/appointments/${id}`, token, {
+      const updated = await apiFetchJson<Appointment>(`/appointments/${id}`, {
         method: "PATCH",
         body: JSON.stringify({
           patientId,
@@ -92,12 +92,12 @@ export default function AppointmentDetailPage() {
   }
 
   async function onDelete() {
-    if (!token) return;
+    if (!user) return;
     if (!window.confirm("Delete this appointment?")) return;
     setDeletePending(true);
     setError(null);
     try {
-      await apiFetchJson(`/appointments/${id}`, token, { method: "DELETE" });
+      await apiFetchJson(`/appointments/${id}`, { method: "DELETE" });
       router.replace("/appointments");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
@@ -106,7 +106,7 @@ export default function AppointmentDetailPage() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
   if (loading) {

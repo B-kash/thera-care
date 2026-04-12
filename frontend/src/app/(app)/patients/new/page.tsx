@@ -2,13 +2,14 @@
 
 import { apiFetchJson } from "@/lib/api";
 import type { Patient } from "@/types/patient";
+import { canMutateRole } from "@/components/mutate-only";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function NewPatientPage() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -21,7 +22,7 @@ export default function NewPatientPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!user) return;
     setError(null);
     setPending(true);
     try {
@@ -34,7 +35,7 @@ export default function NewPatientPage() {
       if (dateOfBirth) body.dateOfBirth = dateOfBirth;
       if (notes.trim()) body.notes = notes.trim();
 
-      const created = await apiFetchJson<Patient>("/patients", token, {
+      const created = await apiFetchJson<Patient>("/patients", {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -46,8 +47,21 @@ export default function NewPatientPage() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
+  }
+
+  if (!canMutateRole(user.role)) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Your role cannot create patients.
+        </p>
+        <Link href="/patients" className="text-sm underline">
+          ← Patients
+        </Link>
+      </div>
+    );
   }
 
   return (

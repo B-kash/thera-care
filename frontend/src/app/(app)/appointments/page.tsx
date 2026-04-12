@@ -14,7 +14,7 @@ function formatRange(startsAt: string, endsAt: string): string {
 }
 
 export default function AppointmentsPage() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
@@ -24,7 +24,7 @@ export default function AppointmentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     setError(null);
     try {
@@ -33,7 +33,7 @@ export default function AppointmentsPage() {
       if (appliedTo) params.set("to", appliedTo);
       params.set("take", "100");
       const path = `/appointments${params.toString() ? `?${params}` : ""}`;
-      const data = await apiFetchJson<Appointment[]>(path, token);
+      const data = await apiFetchJson<Appointment[]>(path);
       setRows(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -41,12 +41,12 @@ export default function AppointmentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, appliedFrom, appliedTo]);
+  }, [user, appliedFrom, appliedTo]);
 
   useEffect(() => {
-    if (!ready || !token) return;
+    if (!ready || !user) return;
     void load();
-  }, [ready, token, load]);
+  }, [ready, user, load]);
 
   return (
     <div className="space-y-6">

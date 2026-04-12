@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 export function NewTreatmentNoteClient() {
-  const { token, ready } = useAuth();
+  const { user, ready } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialPatientId = searchParams.get("patientId") ?? "";
@@ -28,14 +28,14 @@ export function NewTreatmentNoteClient() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-    void apiFetchJson<Patient[]>("/patients?take=200", token)
+    if (!user) return;
+    void apiFetchJson<Patient[]>("/patients?take=200")
       .then(setPatients)
       .catch(() => setPatients([]));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!token || !patientId) {
+    if (!user || !patientId) {
       setAppointments([]);
       return;
     }
@@ -43,10 +43,10 @@ export function NewTreatmentNoteClient() {
       patientId,
       take: "100",
     });
-    void apiFetchJson<Appointment[]>(`/appointments?${qs}`, token)
+    void apiFetchJson<Appointment[]>(`/appointments?${qs}`)
       .then(setAppointments)
       .catch(() => setAppointments([]));
-  }, [token, patientId]);
+  }, [user, patientId]);
 
   const appointmentChoices = useMemo(
     () =>
@@ -61,7 +61,7 @@ export function NewTreatmentNoteClient() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !patientId) return;
+    if (!user || !patientId) return;
     setError(null);
     setPending(true);
     try {
@@ -75,9 +75,7 @@ export function NewTreatmentNoteClient() {
       if (appointmentId) body.appointmentId = appointmentId;
 
       const created = await apiFetchJson<TreatmentNote>(
-        "/treatment-notes",
-        token,
-        {
+        "/treatment-notes", {
           method: "POST",
           body: JSON.stringify(body),
         },
@@ -90,7 +88,7 @@ export function NewTreatmentNoteClient() {
     }
   }
 
-  if (!ready || !token) {
+  if (!ready || !user) {
     return <p className="text-sm text-zinc-500">Loading…</p>;
   }
 
