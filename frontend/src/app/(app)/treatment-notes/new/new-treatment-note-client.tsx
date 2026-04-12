@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetchJson } from "@/lib/api";
+import { formFieldClassName } from "@/lib/form-classes";
 import type { Appointment } from "@/types/appointment";
 import type { Patient } from "@/types/patient";
 import type { TreatmentNote } from "@/types/treatment-note";
@@ -118,7 +119,7 @@ export function NewTreatmentNoteClient() {
           <label className="block text-xs font-medium">Patient *</label>
           <select
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={patientId}
             onChange={(e) => {
               setPatientId(e.target.value);
@@ -139,7 +140,7 @@ export function NewTreatmentNoteClient() {
             Appointment (optional)
           </label>
           <select
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={appointmentId}
             onChange={(e) => setAppointmentId(e.target.value)}
             disabled={!patientId}
@@ -162,7 +163,7 @@ export function NewTreatmentNoteClient() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={subjective}
             onChange={(e) => setSubjective(e.target.value)}
           />
@@ -172,7 +173,7 @@ export function NewTreatmentNoteClient() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={objective}
             onChange={(e) => setObjective(e.target.value)}
           />
@@ -182,7 +183,7 @@ export function NewTreatmentNoteClient() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={assessment}
             onChange={(e) => setAssessment(e.target.value)}
           />
@@ -192,7 +193,7 @@ export function NewTreatmentNoteClient() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
           />

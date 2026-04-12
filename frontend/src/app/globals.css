@@ -1,26 +1,248 @@
 @import "tailwindcss";
+/* App toggles `class="dark"` on <html>; Tailwind v4 defaults `dark:` to prefers-color-scheme only. */
+@custom-variant dark (&:where(.dark, .dark *));
+@import "react-big-calendar/lib/css/react-big-calendar.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* --- Semantic app tokens (FR-06): palette × light/dark + soft mesh gradient --- */
+html {
+  color-scheme: light;
+  --background: #d6d6de;
+  --foreground: #141418;
+  --app-muted: #cacad4;
+  --app-elevated: #e4e4ec;
+  --app-border: #a8a8b8;
+  --app-accent: #3f3f46;
+  --app-accent-fg: #fafafa;
+  --app-sidebar: #cfcfd8;
+  --app-nav-hover: rgba(0, 0, 0, 0.08);
+  --app-danger: #b91c1c;
+  --app-danger-soft: #fef2f2;
+  --app-bg-gradient:
+    radial-gradient(
+      120% 95% at 100% -5%,
+      color-mix(in oklab, var(--app-accent) 11%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      85% 70% at -5% 105%,
+      color-mix(in oklab, var(--app-muted) 35%, #6b6b7a) 0%,
+      transparent 52%
+    ),
+    linear-gradient(168deg, #e0e0e8 0%, #cfcfd8 48%, #d8d8e2 100%);
+}
+
+html.dark {
+  color-scheme: dark;
+  --background: #111118;
+  --foreground: #f2f2f4;
+  --app-muted: #1c1c26;
+  --app-elevated: #181822;
+  --app-border: #3a3a48;
+  --app-accent: #d4d4d8;
+  --app-accent-fg: #18181b;
+  --app-sidebar: #15151d;
+  --app-nav-hover: rgba(255, 255, 255, 0.06);
+  --app-danger: #f87171;
+  --app-danger-soft: #450a0a;
+  --app-bg-gradient:
+    radial-gradient(
+      100% 85% at 92% -8%,
+      color-mix(in oklab, var(--app-accent) 14%, transparent) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      75% 60% at -8% 102%,
+      color-mix(in oklab, #818cf8 11%, transparent) 0%,
+      transparent 50%
+    ),
+    linear-gradient(198deg, #181822 0%, #0e0e14 46%, #12121a 100%);
+}
+
+html[data-palette="ocean"]:not(.dark) {
+  --app-accent: #0369a1;
+  --app-accent-fg: #f0f9ff;
+  --app-sidebar: #c8d8ea;
+  --app-muted: #bdd0e8;
+  --background: #c5d4e8;
+  --app-elevated: #dce8f6;
+  --app-border: #9eb6d4;
+  --app-bg-gradient:
+    radial-gradient(
+      115% 90% at 98% 0%,
+      color-mix(in oklab, var(--app-accent) 13%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      80% 65% at 0% 100%,
+      color-mix(in oklab, #0c4a6e 10%, transparent) 0%,
+      transparent 52%
+    ),
+    linear-gradient(172deg, #d8e4f4 0%, #c4d4ec 50%, #cdddf0 100%);
+}
+
+html.dark[data-palette="ocean"] {
+  --app-accent: #38bdf8;
+  --app-accent-fg: #0c4a6e;
+  --app-sidebar: #121a28;
+  --app-muted: #151d2e;
+  --background: #0f141f;
+  --app-elevated: #151d2e;
+  --app-border: #334155;
+  --app-bg-gradient:
+    radial-gradient(
+      100% 88% at 88% -5%,
+      color-mix(in oklab, var(--app-accent) 16%, transparent) 0%,
+      transparent 54%
+    ),
+    radial-gradient(
+      70% 55% at 0% 100%,
+      color-mix(in oklab, #1d4ed8 12%, transparent) 0%,
+      transparent 50%
+    ),
+    linear-gradient(198deg, #141c2c 0%, #0c101a 100%);
+}
+
+html[data-palette="rose"]:not(.dark) {
+  --app-accent: #be123c;
+  --app-accent-fg: #fff1f2;
+  --app-sidebar: #dfc6cf;
+  --app-muted: #d4bac4;
+  --background: #d2bcc6;
+  --app-elevated: #eadde3;
+  --app-border: #b898a6;
+  --app-bg-gradient:
+    radial-gradient(
+      110% 88% at 100% 0%,
+      color-mix(in oklab, var(--app-accent) 10%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      75% 60% at -5% 100%,
+      color-mix(in oklab, #881337 8%, transparent) 0%,
+      transparent 52%
+    ),
+    linear-gradient(170deg, #e8d6dc 0%, #d4c0c9 50%, #dccad2 100%);
+}
+
+html.dark[data-palette="rose"] {
+  --app-accent: #fb7185;
+  --app-accent-fg: #4c0519;
+  --app-sidebar: #1a1216;
+  --app-muted: #24181d;
+  --background: #140f12;
+  --app-elevated: #1c1419;
+  --app-border: #4a3540;
+  --app-bg-gradient:
+    radial-gradient(
+      95% 82% at 90% -5%,
+      color-mix(in oklab, var(--app-accent) 13%, transparent) 0%,
+      transparent 52%
+    ),
+    radial-gradient(
+      65% 50% at 0% 100%,
+      color-mix(in oklab, #9d174d 10%, transparent) 0%,
+      transparent 48%
+    ),
+    linear-gradient(198deg, #1c1419 0%, #100c0f 100%);
+}
+
+html[data-palette="forest"]:not(.dark) {
+  --app-accent: #166534;
+  --app-accent-fg: #f0fdf4;
+  --app-sidebar: #c8dccf;
+  --app-muted: #bcd4c4;
+  --background: #c5d9ca;
+  --app-elevated: #dceee0;
+  --app-border: #94b89e;
+  --app-bg-gradient:
+    radial-gradient(
+      110% 90% at 95% -5%,
+      color-mix(in oklab, var(--app-accent) 11%, transparent) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      80% 62% at 0% 100%,
+      color-mix(in oklab, #14532d 9%, transparent) 0%,
+      transparent 52%
+    ),
+    linear-gradient(172deg, #d8eadc 0%, #c4d8ca 50%, #cddfd2 100%);
+}
+
+html.dark[data-palette="forest"] {
+  --app-accent: #86efac;
+  --app-accent-fg: #14532d;
+  --app-sidebar: #121a14;
+  --app-muted: #162018;
+  --background: #0f1511;
+  --app-elevated: #151d17;
+  --app-border: #35503c;
+  --app-bg-gradient:
+    radial-gradient(
+      95% 85% at 88% -5%,
+      color-mix(in oklab, var(--app-accent) 12%, transparent) 0%,
+      transparent 54%
+    ),
+    radial-gradient(
+      70% 55% at 0% 100%,
+      color-mix(in oklab, #166534 14%, transparent) 0%,
+      transparent 50%
+    ),
+    linear-gradient(198deg, #151d17 0%, #0c100d 100%);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-app-muted: var(--app-muted);
+  --color-app-elevated: var(--app-elevated);
+  --color-app-border: var(--app-border);
+  --color-app-accent: var(--app-accent);
+  --color-app-accent-fg: var(--app-accent-fg);
+  --color-app-sidebar: var(--app-sidebar);
+  --color-app-danger: var(--app-danger);
+  --color-app-danger-soft: var(--app-danger-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  min-height: 100%;
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--background);
+  background-image: var(--app-bg-gradient);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
 }
 
-body {
-  background: var(--background);
+/* react-big-calendar: align with app chrome */
+.rbc-calendar {
+  font-size: 0.875rem;
+}
+.rbc-header,
+.rbc-time-header-content,
+.rbc-day-bg,
+.rbc-off-range-bg {
+  border-color: var(--app-border);
+}
+.rbc-today {
+  background-color: color-mix(in oklab, var(--app-accent) 8%, transparent);
+}
+.rbc-event,
+.rbc-selected {
+  background-color: var(--app-accent);
+  color: var(--app-accent-fg);
+  border: none;
+}
+.rbc-toolbar button {
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  border-color: var(--app-border);
+}
+.rbc-toolbar button.rbc-active {
+  background-color: var(--app-accent);
+  color: var(--app-accent-fg);
+}
+.dark .rbc-today {
+  background-color: color-mix(in oklab, var(--app-accent) 12%, transparent);
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { DateInput } from "@/components/date-inputs";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiFetchJson } from "@/lib/api";
+import { formFieldClassName } from "@/lib/form-classes";
 import type { ProgressRecord } from "@/types/progress-record";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
@@ -34,7 +36,7 @@ export default function ProgressDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savePending, setSavePending] = useState(false);
-  const [deletePending, setDeletePending] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!user || !id) return;
@@ -101,11 +103,9 @@ export default function ProgressDetailPage() {
     }
   }
 
-  async function onDelete() {
-    if (!user || !row) return;
-    if (!window.confirm("Delete this progress entry?")) return;
+  async function performDelete() {
+    if (!user || !row) throw new Error("Missing record");
     const pid = row.patientId;
-    setDeletePending(true);
     setError(null);
     try {
       await apiFetchJson(`/progress/${id}`, { method: "DELETE" });
@@ -114,8 +114,7 @@ export default function ProgressDetailPage() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setDeletePending(false);
+      throw err;
     }
   }
 
@@ -183,7 +182,7 @@ export default function ProgressDetailPage() {
             min={0}
             max={10}
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={painLevel}
             onChange={(e) => setPainLevel(e.target.value)}
           />
@@ -196,7 +195,7 @@ export default function ProgressDetailPage() {
             type="number"
             min={0}
             max={100}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={mobilityScore}
             onChange={(e) => setMobilityScore(e.target.value)}
           />
@@ -205,7 +204,7 @@ export default function ProgressDetailPage() {
           <label className="block text-xs font-medium">Notes</label>
           <textarea
             rows={3}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -227,14 +226,22 @@ export default function ProgressDetailPage() {
           </button>
           <button
             type="button"
-            disabled={deletePending}
-            onClick={() => void onDelete()}
+            onClick={() => setDeleteDialogOpen(true)}
             className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 dark:border-red-900 dark:text-red-400"
           >
-            {deletePending ? "Deleting…" : "Delete"}
+            Delete
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete this progress entry?"
+        description="Removes this progress row permanently. This cannot be undone."
+        confirmLabel="Delete entry"
+        onConfirm={performDelete}
+      />
     </div>
   );
 }

@@ -1,22 +1,25 @@
 "use client";
 
 import { DateTimeInput } from "@/components/date-inputs";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiFetchJson } from "@/lib/api";
+import { formFieldClassName } from "@/lib/form-classes";
 import type { Appointment } from "@/types/appointment";
 import type { Patient } from "@/types/patient";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import {
+  DEFAULT_APPOINTMENT_MINUTES,
+  addMinutesToLocalInput,
+  appointmentDurationLabel,
+  formatLocalDateTimeInput,
+  isValidAppointmentRange,
+} from "@/lib/appointment-datetime";
+import { appointmentsIndexHref } from "@/lib/appointments-view-storage";
 import { useCallback, useEffect, useState } from "react";
 
 const STATUSES = ["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
-
-function toLocalInput(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export default function AppointmentDetailPage() {
   const params = useParams();
@@ -34,7 +37,13 @@ export default function AppointmentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savePending, setSavePending] = useState(false);
-  const [deletePending, setDeletePending] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [appointmentsListHref, setAppointmentsListHref] =
+    useState("/appointments");
+
+  useEffect(() => {
+    setAppointmentsListHref(appointmentsIndexHref());
+  }, []);
 
   const load = useCallback(async () => {
     if (!user || !id) return;
@@ -44,8 +53,8 @@ export default function AppointmentDetailPage() {
       const a = await apiFetchJson<Appointment>(`/appointments/${id}`);
       setApt(a);
       setPatientId(a.patientId);
-      setStartsAt(toLocalInput(a.startsAt));
-      setEndsAt(toLocalInput(a.endsAt));
+      setStartsAt(formatLocalDateTimeInput(new Date(a.startsAt)));
+      setEndsAt(formatLocalDateTimeInput(new Date(a.endsAt)));
       setStatus(a.status);
       setNotes(a.notes ?? "");
     } catch (e) {
@@ -68,11 +77,33 @@ export default function AppointmentDetailPage() {
     void load();
   }, [ready, user, load]);
 
+  function onStartsChange(next: string) {
+    setStartsAt(next);
+    setEndsAt((prevEnd) => {
+      if (!next.trim()) return prevEnd;
+      const s = new Date(next);
+      const e = new Date(prevEnd);
+      if (Number.isNaN(s.getTime())) return prevEnd;
+      if (
+        !prevEnd.trim() ||
+        Number.isNaN(e.getTime()) ||
+        e.getTime() <= s.getTime()
+      ) {
+        return addMinutesToLocalInput(next, DEFAULT_APPOINTMENT_MINUTES);
+      }
+      return prevEnd;
+    });
+  }
+
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    setSavePending(true);
     setError(null);
+    if (!isValidAppointmentRange(startsAt, endsAt)) {
+      setError("End must be after start.");
+      return;
+    }
+    setSavePending(true);
     try {
       const updated = await apiFetchJson<Appointment>(`/appointments/${id}`, {
         method: "PATCH",
@@ -92,18 +123,15 @@ export default function AppointmentDetailPage() {
     }
   }
 
-  async function onDelete() {
-    if (!user) return;
-    if (!window.confirm("Delete this appointment?")) return;
-    setDeletePending(true);
+  async function performDelete() {
+    if (!user) throw new Error("Not signed in");
     setError(null);
     try {
       await apiFetchJson(`/appointments/${id}`, { method: "DELETE" });
       router.replace("/appointments");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setDeletePending(false);
+      throw err;
     }
   }
 
@@ -117,7 +145,7 @@ export default function AppointmentDetailPage() {
     return (
       <div className="space-y-2">
         <p className="text-sm text-red-600">{error}</p>
-        <Link href="/appointments" className="text-sm underline">
+        <Link href={appointmentsListHref} className="text-sm underline">
           ← Back
         </Link>
       </div>
@@ -128,7 +156,7 @@ export default function AppointmentDetailPage() {
     <div className="mx-auto max-w-lg space-y-6">
       <div>
         <Link
-          href="/appointments"
+          href={appointmentsListHref}
           className="text-sm text-zinc-600 underline dark:text-zinc-400"
         >
           ← Appointments
@@ -150,7 +178,7 @@ export default function AppointmentDetailPage() {
           <label className="block text-xs font-medium">Patient *</label>
           <select
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
@@ -170,8 +198,13 @@ export default function AppointmentDetailPage() {
             label="Appointment start"
             required
             value={startsAt}
-            onChange={(e) => setStartsAt(e.target.value)}
+            max={endsAt.trim() ? endsAt : undefined}
+            onChange={(e) => onStartsChange(e.target.value)}
           />
+          <p className="mt-1 text-xs text-foreground/55">
+            If start moves past end, end jumps to start +{" "}
+            {DEFAULT_APPOINTMENT_MINUTES} min.
+          </p>
         </div>
         <div>
           <label htmlFor="apt-edit-ends" className="block text-xs font-medium">
@@ -182,13 +215,23 @@ export default function AppointmentDetailPage() {
             label="Appointment end"
             required
             value={endsAt}
+            min={startsAt.trim() ? startsAt : undefined}
             onChange={(e) => setEndsAt(e.target.value)}
           />
+          {appointmentDurationLabel(startsAt, endsAt) ? (
+            <p className="mt-1 text-xs text-foreground/60">
+              Duration: {appointmentDurationLabel(startsAt, endsAt)}
+            </p>
+          ) : startsAt && endsAt ? (
+            <p className="mt-1 text-xs text-app-danger" role="status">
+              End must be after start.
+            </p>
+          ) : null}
         </div>
         <div>
           <label className="block text-xs font-medium">Status</label>
           <select
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -203,7 +246,7 @@ export default function AppointmentDetailPage() {
           <label className="block text-xs font-medium">Notes</label>
           <textarea
             rows={3}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -218,21 +261,31 @@ export default function AppointmentDetailPage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            disabled={savePending}
+            disabled={
+              savePending || !isValidAppointmentRange(startsAt, endsAt)
+            }
             className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
           >
             {savePending ? "Saving…" : "Save"}
           </button>
           <button
             type="button"
-            disabled={deletePending}
-            onClick={() => void onDelete()}
+            onClick={() => setDeleteDialogOpen(true)}
             className="rounded-md border border-red-300 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:text-red-400"
           >
-            {deletePending ? "Deleting…" : "Delete"}
+            Delete
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete this appointment?"
+        description="Removes this visit from the schedule. This cannot be undone."
+        confirmLabel="Delete appointment"
+        onConfirm={performDelete}
+      />
     </div>
   );
 }

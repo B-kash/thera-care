@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetchJson } from "@/lib/api";
+import { formFieldClassName } from "@/lib/form-classes";
 import type { ExercisePlanDetail } from "@/types/exercise-plan";
 import type { Patient } from "@/types/patient";
 import { useAuth } from "@/providers/auth-provider";
@@ -81,7 +82,7 @@ export function NewExercisePlanClient() {
           <label className="block text-xs font-medium">Patient *</label>
           <select
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
@@ -97,7 +98,7 @@ export function NewExercisePlanClient() {
           <label className="block text-xs font-medium">Title *</label>
           <input
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -106,7 +107,7 @@ export function NewExercisePlanClient() {
           <label className="block text-xs font-medium">Notes</label>
           <textarea
             rows={3}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
