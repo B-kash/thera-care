@@ -1,9 +1,14 @@
 "use client";
 
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { formFieldClassName } from "@/lib/form-classes";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const inputClassName = `mt-1 ${formFieldClassName}`;
 
 export function LoginForm() {
   const { ready, user, login, register } = useAuth();
@@ -47,30 +52,32 @@ export function LoginForm() {
 
   if (!ready) {
     return (
-      <div className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</div>
+      <p className="text-center text-sm text-foreground/60">Loading…</p>
     );
   }
 
   if (user) {
     return (
-      <div className="text-sm text-zinc-500 dark:text-zinc-400">Redirecting…</div>
+      <p className="text-center text-sm text-foreground/60">Redirecting…</p>
     );
   }
 
   return (
-    <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h1 className="text-xl font-semibold tracking-tight">Thera Care</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+    <div className="w-full max-w-sm rounded-xl border border-app-border/80 bg-app-elevated/90 p-8 shadow-lg shadow-black/10 backdrop-blur-xl dark:shadow-black/40">
+      <h1 className="text-xl font-semibold tracking-tight text-foreground">
+        Thera Care
+      </h1>
+      <p className="mt-1 text-sm text-foreground/70">
         {mode === "login" ? "Sign in to continue" : "Create your account"}
       </p>
 
-      <div className="mt-6 flex gap-2 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800">
+      <div className="mt-6 flex gap-1 rounded-lg border border-app-border/60 bg-app-muted/90 p-1">
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium ${
+          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             mode === "login"
-              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-50"
-              : "text-zinc-600 dark:text-zinc-400"
+              ? "bg-app-elevated text-foreground shadow-sm"
+              : "text-foreground/65 hover:text-foreground"
           }`}
           onClick={() => {
             setMode("login");
@@ -81,10 +88,10 @@ export function LoginForm() {
         </button>
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium ${
+          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             mode === "register"
-              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-950 dark:text-zinc-50"
-              : "text-zinc-600 dark:text-zinc-400"
+              ? "bg-app-elevated text-foreground shadow-sm"
+              : "text-foreground/65 hover:text-foreground"
           }`}
           onClick={() => {
             setMode("register");
@@ -100,7 +107,7 @@ export function LoginForm() {
           <div>
             <label
               htmlFor="displayName"
-              className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+              className="block text-xs font-medium text-foreground/80"
             >
               Display name (optional)
             </label>
@@ -108,7 +115,7 @@ export function LoginForm() {
               id="displayName"
               name="displayName"
               autoComplete="name"
-              className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-600 dark:bg-zinc-950"
+              className={inputClassName}
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
@@ -117,7 +124,7 @@ export function LoginForm() {
         <div>
           <label
             htmlFor="email"
-            className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+            className="block text-xs font-medium text-foreground/80"
           >
             Email
           </label>
@@ -127,7 +134,7 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-600 dark:bg-zinc-950"
+            className={inputClassName}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -135,7 +142,7 @@ export function LoginForm() {
         <div>
           <label
             htmlFor="password"
-            className="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+            className="block text-xs font-medium text-foreground/80"
           >
             Password
           </label>
@@ -146,32 +153,33 @@ export function LoginForm() {
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             required
             minLength={mode === "register" ? 8 : 1}
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-600 dark:bg-zinc-950"
+            className={inputClassName}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
           {mode === "register" && (
-            <p className="mt-1 text-xs text-zinc-500">At least 8 characters.</p>
+            <p className="mt-1 text-xs text-foreground/55">
+              At least 8 characters.
+            </p>
           )}
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {error}
-          </p>
-        )}
+        {error ? <Alert>{error}</Alert> : null}
 
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full rounded-md bg-zinc-900 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          {pending ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
-        </button>
+        <Button type="submit" className="w-full" disabled={pending}>
+          {pending
+            ? "Please wait…"
+            : mode === "login"
+              ? "Sign in"
+              : "Create account"}
+        </Button>
       </form>
 
-      <p className="mt-6 text-center text-xs text-zinc-500">
-        <Link href="/" className="underline hover:text-zinc-700 dark:hover:text-zinc-300">
+      <p className="mt-6 text-center text-xs text-foreground/55">
+        <Link
+          href="/"
+          className="underline underline-offset-2 hover:text-foreground"
+        >
           Back to home
         </Link>
       </p>

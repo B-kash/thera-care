@@ -6,6 +6,8 @@ import type { ExercisePlanList } from "@/types/exercise-plan";
 import type { ProgressRecord } from "@/types/progress-record";
 import type { TreatmentNote } from "@/types/treatment-note";
 import { DateInput } from "@/components/date-inputs";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formFieldClassName } from "@/lib/form-classes";
 import { canMutateRole, MutateOnly } from "@/components/mutate-only";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
@@ -35,7 +37,7 @@ export default function PatientDetailPage() {
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [notes, setNotes] = useState("");
   const [savePending, setSavePending] = useState(false);
-  const [deletePending, setDeletePending] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [treatmentNotes, setTreatmentNotes] = useState<TreatmentNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [exercisePlans, setExercisePlans] = useState<ExercisePlanList[]>([]);
@@ -161,18 +163,15 @@ export default function PatientDetailPage() {
     }
   }
 
-  async function onDelete() {
-    if (!user) return;
-    if (!window.confirm("Delete this patient? This cannot be undone.")) return;
-    setDeletePending(true);
+  async function performDelete() {
+    if (!user) throw new Error("Not signed in");
     setError(null);
     try {
       await apiFetchJson(`/patients/${id}`, { method: "DELETE" });
       router.replace("/patients");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setDeletePending(false);
+      throw err;
     }
   }
 
@@ -360,7 +359,7 @@ export default function PatientDetailPage() {
             <input
               required
               disabled={!canEdit}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              className={`mt-1 ${formFieldClassName}`}
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
             />
@@ -370,7 +369,7 @@ export default function PatientDetailPage() {
             <input
               required
               disabled={!canEdit}
-              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              className={`mt-1 ${formFieldClassName}`}
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
@@ -381,7 +380,7 @@ export default function PatientDetailPage() {
           <input
             type="email"
             disabled={!canEdit}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -390,7 +389,7 @@ export default function PatientDetailPage() {
           <label className="block text-xs font-medium">Phone</label>
           <input
             disabled={!canEdit}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
@@ -412,7 +411,7 @@ export default function PatientDetailPage() {
           <textarea
             rows={4}
             disabled={!canEdit}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -435,15 +434,23 @@ export default function PatientDetailPage() {
             </button>
             <button
               type="button"
-              disabled={deletePending}
-              onClick={() => void onDelete()}
-              className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
+              onClick={() => setDeleteDialogOpen(true)}
+              className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
             >
-              {deletePending ? "Deleting…" : "Delete patient"}
+              Delete patient
             </button>
           </div>
         )}
       </form>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete this patient?"
+        description="Removes the patient record and related data your permissions allow. This cannot be undone."
+        confirmLabel="Delete patient"
+        onConfirm={performDelete}
+      />
     </div>
   );
 }

@@ -1,7 +1,12 @@
 "use client";
 
 import { canMutateRole } from "@/components/mutate-only";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { apiFetchJson } from "@/lib/api";
+import {
+  formFieldClassName,
+  formFieldCompactClassName,
+} from "@/lib/form-classes";
 import type { ExerciseItem, ExercisePlanDetail } from "@/types/exercise-plan";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
@@ -30,6 +35,7 @@ function ItemRow({
   const [sortOrder, setSortOrder] = useState(String(item.sortOrder));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
 
   useEffect(() => {
     setName(item.name);
@@ -90,9 +96,8 @@ function ItemRow({
     }
   }
 
-  async function onDelete() {
-    if (readOnly) return;
-    if (!window.confirm("Remove this exercise from the plan?")) return;
+  async function executeRemove() {
+    if (readOnly) throw new Error("Read-only");
     setPending(true);
     setError(null);
     try {
@@ -102,12 +107,14 @@ function ItemRow({
       onUpdated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
+      throw err;
     } finally {
       setPending(false);
     }
   }
 
   return (
+    <>
     <form
       className="space-y-2 rounded-md border border-zinc-200 p-3 dark:border-zinc-800"
       onSubmit={onSave}
@@ -118,7 +125,7 @@ function ItemRow({
           <input
             required
             disabled={readOnly}
-            className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-0.5 w-full ${formFieldCompactClassName}`}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -128,7 +135,7 @@ function ItemRow({
           <textarea
             rows={2}
             disabled={readOnly}
-            className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-0.5 w-full ${formFieldCompactClassName}`}
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
           />
@@ -138,7 +145,7 @@ function ItemRow({
           <input
             inputMode="numeric"
             disabled={readOnly}
-            className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-0.5 w-full ${formFieldCompactClassName}`}
             value={sets}
             onChange={(e) => setSets(e.target.value)}
           />
@@ -148,7 +155,7 @@ function ItemRow({
           <input
             inputMode="numeric"
             disabled={readOnly}
-            className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-0.5 w-full ${formFieldCompactClassName}`}
             value={reps}
             onChange={(e) => setReps(e.target.value)}
           />
@@ -158,7 +165,7 @@ function ItemRow({
           <input
             inputMode="numeric"
             disabled={readOnly}
-            className="mt-0.5 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-0.5 w-full ${formFieldCompactClassName}`}
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
           />
@@ -179,7 +186,7 @@ function ItemRow({
           <button
             type="button"
             disabled={pending}
-            onClick={() => void onDelete()}
+            onClick={() => setRemoveConfirmOpen(true)}
             className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 dark:border-red-900 dark:text-red-400"
           >
             Remove
@@ -187,6 +194,17 @@ function ItemRow({
         </div>
       )}
     </form>
+    {!readOnly ? (
+      <ConfirmDialog
+        open={removeConfirmOpen}
+        onOpenChange={setRemoveConfirmOpen}
+        title="Remove this exercise?"
+        description="Removes only this row from the plan. You can add exercises again later."
+        confirmLabel="Remove exercise"
+        onConfirm={executeRemove}
+      />
+    ) : null}
+    </>
   );
 }
 
@@ -202,7 +220,7 @@ export default function ExercisePlanDetailPage() {
   const [loading, setLoading] = useState(true);
   const [planError, setPlanError] = useState<string | null>(null);
   const [savePlanPending, setSavePlanPending] = useState(false);
-  const [deletePlanPending, setDeletePlanPending] = useState(false);
+  const [deletePlanDialogOpen, setDeletePlanDialogOpen] = useState(false);
 
   const [newName, setNewName] = useState("");
   const [newInstructions, setNewInstructions] = useState("");
@@ -255,10 +273,8 @@ export default function ExercisePlanDetailPage() {
     }
   }
 
-  async function onDeletePlan() {
-    if (!user || !plan) return;
-    if (!window.confirm("Delete entire plan and all exercises?")) return;
-    setDeletePlanPending(true);
+  async function performPlanDelete() {
+    if (!user || !plan) throw new Error("Missing plan");
     setPlanError(null);
     const pid = plan.patientId;
     try {
@@ -270,8 +286,7 @@ export default function ExercisePlanDetailPage() {
       );
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setDeletePlanPending(false);
+      throw err;
     }
   }
 
@@ -372,7 +387,7 @@ export default function ExercisePlanDetailPage() {
           <input
             required
             disabled={!canEdit}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -382,7 +397,7 @@ export default function ExercisePlanDetailPage() {
           <textarea
             rows={3}
             disabled={!canEdit}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -403,11 +418,10 @@ export default function ExercisePlanDetailPage() {
             </button>
             <button
               type="button"
-              disabled={deletePlanPending}
-              onClick={() => void onDeletePlan()}
+              onClick={() => setDeletePlanDialogOpen(true)}
               className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 dark:border-red-900 dark:text-red-400"
             >
-              {deletePlanPending ? "Deleting…" : "Delete plan"}
+              Delete plan
             </button>
           </div>
         )}
@@ -438,14 +452,14 @@ export default function ExercisePlanDetailPage() {
             <input
               required
               placeholder="Name *"
-              className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              className={`w-full ${formFieldCompactClassName}`}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
             />
             <textarea
               placeholder="Instructions"
               rows={2}
-              className="w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              className={`w-full ${formFieldCompactClassName}`}
               value={newInstructions}
               onChange={(e) => setNewInstructions(e.target.value)}
             />
@@ -453,14 +467,14 @@ export default function ExercisePlanDetailPage() {
               <input
                 placeholder="Sets"
                 inputMode="numeric"
-                className="w-24 rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+                className={`w-24 ${formFieldCompactClassName}`}
                 value={newSets}
                 onChange={(e) => setNewSets(e.target.value)}
               />
               <input
                 placeholder="Reps"
                 inputMode="numeric"
-                className="w-24 rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+                className={`w-24 ${formFieldCompactClassName}`}
                 value={newReps}
                 onChange={(e) => setNewReps(e.target.value)}
               />
@@ -478,6 +492,15 @@ export default function ExercisePlanDetailPage() {
           </form>
         )}
       </section>
+
+      <ConfirmDialog
+        open={deletePlanDialogOpen}
+        onOpenChange={setDeletePlanDialogOpen}
+        title="Delete entire exercise plan?"
+        description="Deletes this plan and every exercise in it. This cannot be undone."
+        confirmLabel="Delete plan"
+        onConfirm={performPlanDelete}
+      />
     </div>
   );
 }

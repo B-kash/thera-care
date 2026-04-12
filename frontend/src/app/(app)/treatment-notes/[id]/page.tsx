@@ -1,6 +1,8 @@
 "use client";
 
 import { apiFetchJson } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formFieldClassName } from "@/lib/form-classes";
 import type { Appointment } from "@/types/appointment";
 import type { TreatmentNote } from "@/types/treatment-note";
 import { useAuth } from "@/providers/auth-provider";
@@ -23,7 +25,7 @@ export default function TreatmentNoteDetailPage() {
   const [plan, setPlan] = useState("");
   const [loading, setLoading] = useState(true);
   const [savePending, setSavePending] = useState(false);
-  const [deletePending, setDeletePending] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -104,11 +106,9 @@ export default function TreatmentNoteDetailPage() {
     }
   }
 
-  async function onDelete() {
-    if (!user || !note) return;
-    if (!window.confirm("Delete this treatment note?")) return;
+  async function performDelete() {
+    if (!user || !note) throw new Error("Missing note");
     const patientId = note.patientId;
-    setDeletePending(true);
     setError(null);
     try {
       await apiFetchJson(`/treatment-notes/${id}`, { method: "DELETE" });
@@ -119,8 +119,7 @@ export default function TreatmentNoteDetailPage() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
-    } finally {
-      setDeletePending(false);
+      throw err;
     }
   }
 
@@ -176,7 +175,7 @@ export default function TreatmentNoteDetailPage() {
             Appointment (optional)
           </label>
           <select
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={appointmentId}
             onChange={(e) => setAppointmentId(e.target.value)}
           >
@@ -198,7 +197,7 @@ export default function TreatmentNoteDetailPage() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={subjective}
             onChange={(e) => setSubjective(e.target.value)}
           />
@@ -208,7 +207,7 @@ export default function TreatmentNoteDetailPage() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={objective}
             onChange={(e) => setObjective(e.target.value)}
           />
@@ -218,7 +217,7 @@ export default function TreatmentNoteDetailPage() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={assessment}
             onChange={(e) => setAssessment(e.target.value)}
           />
@@ -228,7 +227,7 @@ export default function TreatmentNoteDetailPage() {
           <textarea
             required
             rows={4}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={plan}
             onChange={(e) => setPlan(e.target.value)}
           />
@@ -250,14 +249,22 @@ export default function TreatmentNoteDetailPage() {
           </button>
           <button
             type="button"
-            disabled={deletePending}
-            onClick={() => void onDelete()}
-            className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
+            onClick={() => setDeleteDialogOpen(true)}
+            className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
           >
-            {deletePending ? "Deleting…" : "Delete note"}
+            Delete note
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete this treatment note?"
+        description="Removes the SOAP note permanently. This cannot be undone."
+        confirmLabel="Delete note"
+        onConfirm={performDelete}
+      />
     </div>
   );
 }

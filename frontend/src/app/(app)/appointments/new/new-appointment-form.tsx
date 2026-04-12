@@ -4,11 +4,21 @@ import { apiFetchJson } from "@/lib/api";
 import type { Appointment } from "@/types/appointment";
 import type { Patient } from "@/types/patient";
 import { DateTimeInput } from "@/components/date-inputs";
+import { formFieldClassName } from "@/lib/form-classes";
 import { MutateOnly } from "@/components/mutate-only";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import {
+  DEFAULT_APPOINTMENT_MINUTES,
+  addMinutesToLocalInput,
+  appointmentDurationLabel,
+  defaultSlotRange,
+  isValidAppointmentRange,
+  parseSlotRangeFromSearchParam,
+} from "@/lib/appointment-datetime";
+import { appointmentsIndexHref } from "@/lib/appointments-view-storage";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const STATUSES = ["SCHEDULED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
 
@@ -19,16 +29,26 @@ export function NewAppointmentForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlPatientId = searchParams.get("patientId");
+  const startsAtParam = searchParams.get("startsAt") ?? "";
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [patientId, setPatientId] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
+  const initialTimes =
+    parseSlotRangeFromSearchParam(startsAtParam) ?? defaultSlotRange();
+  const [startsAt, setStartsAt] = useState(initialTimes.startsAt);
+  const [endsAt, setEndsAt] = useState(initialTimes.endsAt);
+  const prevStartsAtParam = useRef<string | undefined>(undefined);
   const [status, setStatus] = useState<string>("SCHEDULED");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [appointmentsListHref, setAppointmentsListHref] =
+    useState("/appointments");
+
+  useEffect(() => {
+    setAppointmentsListHref(appointmentsIndexHref());
+  }, []);
 
   const loadPatients = useCallback(async () => {
     if (!user) return;
@@ -56,10 +76,45 @@ export function NewAppointmentForm() {
     }
   }, [urlPatientId, patients]);
 
+  useEffect(() => {
+    if (prevStartsAtParam.current === undefined) {
+      prevStartsAtParam.current = startsAtParam;
+      return;
+    }
+    if (startsAtParam === prevStartsAtParam.current) return;
+    prevStartsAtParam.current = startsAtParam;
+    const parsed = parseSlotRangeFromSearchParam(startsAtParam);
+    if (!parsed) return;
+    setStartsAt(parsed.startsAt);
+    setEndsAt(parsed.endsAt);
+  }, [startsAtParam]);
+
+  function onStartsChange(next: string) {
+    setStartsAt(next);
+    setEndsAt((prevEnd) => {
+      if (!next.trim()) return prevEnd;
+      const s = new Date(next);
+      const e = new Date(prevEnd);
+      if (Number.isNaN(s.getTime())) return prevEnd;
+      if (
+        !prevEnd.trim() ||
+        Number.isNaN(e.getTime()) ||
+        e.getTime() <= s.getTime()
+      ) {
+        return addMinutesToLocalInput(next, DEFAULT_APPOINTMENT_MINUTES);
+      }
+      return prevEnd;
+    });
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     setError(null);
+    if (!isValidAppointmentRange(startsAt, endsAt)) {
+      setError("End must be after start.");
+      return;
+    }
     setPending(true);
     try {
       const body: Record<string, unknown> = {
@@ -90,7 +145,7 @@ export function NewAppointmentForm() {
     <div className="mx-auto max-w-lg space-y-6">
       <div>
         <Link
-          href="/appointments"
+          href={appointmentsListHref}
           className="text-sm text-zinc-600 underline dark:text-zinc-400"
         >
           ← Appointments
@@ -115,7 +170,7 @@ export function NewAppointmentForm() {
           </div>
           <select
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
@@ -141,8 +196,14 @@ export function NewAppointmentForm() {
             label="Appointment start"
             required
             value={startsAt}
-            onChange={(e) => setStartsAt(e.target.value)}
+            max={endsAt.trim() ? endsAt : undefined}
+            onChange={(e) => onStartsChange(e.target.value)}
           />
+          <p className="mt-1 text-xs text-foreground/55">
+            Defaults to next half-hour. Visit length usually{" "}
+            {DEFAULT_APPOINTMENT_MINUTES} min — end snaps forward if it would
+            finish before start.
+          </p>
         </div>
         <div>
           <label htmlFor="apt-new-ends" className="block text-xs font-medium">
@@ -153,13 +214,23 @@ export function NewAppointmentForm() {
             label="Appointment end"
             required
             value={endsAt}
+            min={startsAt.trim() ? startsAt : undefined}
             onChange={(e) => setEndsAt(e.target.value)}
           />
+          {appointmentDurationLabel(startsAt, endsAt) ? (
+            <p className="mt-1 text-xs text-foreground/60">
+              Duration: {appointmentDurationLabel(startsAt, endsAt)}
+            </p>
+          ) : startsAt && endsAt ? (
+            <p className="mt-1 text-xs text-app-danger" role="status">
+              End must be after start.
+            </p>
+          ) : null}
         </div>
         <div>
           <label className="block text-xs font-medium">Status</label>
           <select
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -174,7 +245,7 @@ export function NewAppointmentForm() {
           <label className="block text-xs font-medium">Notes</label>
           <textarea
             rows={3}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -189,13 +260,13 @@ export function NewAppointmentForm() {
         <div className="flex gap-2">
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !isValidAppointmentRange(startsAt, endsAt)}
             className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900"
           >
             {pending ? "Saving…" : "Create"}
           </button>
           <Link
-            href="/appointments"
+            href={appointmentsListHref}
             className="inline-flex items-center rounded-md border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600"
           >
             Cancel

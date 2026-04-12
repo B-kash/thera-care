@@ -2,6 +2,7 @@
 
 import { DateInput } from "@/components/date-inputs";
 import { apiFetchJson } from "@/lib/api";
+import { formFieldClassName } from "@/lib/form-classes";
 import type { Patient } from "@/types/patient";
 import type { ProgressRecord } from "@/types/progress-record";
 import { useAuth } from "@/providers/auth-provider";
@@ -107,7 +108,7 @@ export function NewProgressClient() {
           <label className="block text-xs font-medium">Patient *</label>
           <select
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
@@ -138,7 +139,7 @@ export function NewProgressClient() {
             min={0}
             max={10}
             required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={painLevel}
             onChange={(e) => setPainLevel(e.target.value)}
           />
@@ -151,7 +152,7 @@ export function NewProgressClient() {
             type="number"
             min={0}
             max={100}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={mobilityScore}
             onChange={(e) => setMobilityScore(e.target.value)}
           />
@@ -160,7 +161,7 @@ export function NewProgressClient() {
           <label className="block text-xs font-medium">Notes</label>
           <textarea
             rows={3}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className={`mt-1 ${formFieldClassName}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />

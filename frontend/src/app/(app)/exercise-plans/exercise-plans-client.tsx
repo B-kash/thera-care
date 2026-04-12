@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetchJson } from "@/lib/api";
+import { formFieldClassName } from "@/lib/form-classes";
 import type { ExercisePlanList } from "@/types/exercise-plan";
 import type { Patient } from "@/types/patient";
 import { useAuth } from "@/providers/auth-provider";
@@ -86,7 +87,7 @@ export function ExercisePlansClient() {
           Patient
         </label>
         <select
-          className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+          className={`mt-1 ${formFieldClassName}`}
           value={patientIdFromUrl}
           onChange={(e) => {
             const v = e.target.value;

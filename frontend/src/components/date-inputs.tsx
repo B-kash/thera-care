@@ -1,5 +1,6 @@
 "use client";
 
+import { formFieldClassName } from "@/lib/form-classes";
 import {
   forwardRef,
   useCallback,
@@ -10,8 +11,7 @@ import {
 } from "react";
 
 /** Shared look for calendar fields (matches app forms). */
-export const dateFieldClassName =
-  "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50";
+export const dateFieldClassName = formFieldClassName;
 
 function openPickerIfSupported(el: HTMLInputElement | null) {
   if (!el) return;
@@ -93,7 +93,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
           tabIndex={-1}
           disabled={disabled}
           onClick={open}
-          className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-foreground/50 hover:bg-app-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           aria-label={`Open calendar: ${label}`}
         >
           <CalendarGlyph className="h-4 w-4" />
@@ -139,7 +139,7 @@ export const DateTimeInput = forwardRef<HTMLInputElement, DateTimeInputProps>(
           tabIndex={-1}
           disabled={disabled}
           onClick={open}
-          className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 disabled:pointer-events-none disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+          className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-foreground/50 hover:bg-app-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
           aria-label={`Open date and time picker: ${label}`}
         >
           <CalendarGlyph className="h-4 w-4" />
