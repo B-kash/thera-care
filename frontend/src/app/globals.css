@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* App toggles `class="dark"` on <html>; Tailwind v4 defaults `dark:` to prefers-color-scheme only. */
+@custom-variant dark (&:where(.dark, .dark *));
 @import "react-big-calendar/lib/css/react-big-calendar.css";
 
 /* --- Semantic app tokens (FR-06): palette × light/dark + soft mesh gradient --- */
