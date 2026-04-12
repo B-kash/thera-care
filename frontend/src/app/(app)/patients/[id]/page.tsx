@@ -3,6 +3,7 @@
 import { apiFetchJson } from "@/lib/api";
 import type { Patient } from "@/types/patient";
 import type { ExercisePlanList } from "@/types/exercise-plan";
+import type { ProgressRecord } from "@/types/progress-record";
 import type { TreatmentNote } from "@/types/treatment-note";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
@@ -37,6 +38,8 @@ export default function PatientDetailPage() {
   const [notesLoading, setNotesLoading] = useState(false);
   const [exercisePlans, setExercisePlans] = useState<ExercisePlanList[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
+  const [progressRows, setProgressRows] = useState<ProgressRecord[]>([]);
+  const [progressLoading, setProgressLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -93,6 +96,23 @@ export default function PatientDetailPage() {
     }
   }, [token, id]);
 
+  const loadProgress = useCallback(async () => {
+    if (!token || !id) return;
+    setProgressLoading(true);
+    try {
+      const qs = new URLSearchParams({ patientId: id });
+      const list = await apiFetchJson<ProgressRecord[]>(
+        `/progress?${qs}`,
+        token,
+      );
+      setProgressRows(list);
+    } catch {
+      setProgressRows([]);
+    } finally {
+      setProgressLoading(false);
+    }
+  }, [token, id]);
+
   useEffect(() => {
     if (!ready || !token) return;
     void load();
@@ -107,6 +127,11 @@ export default function PatientDetailPage() {
     if (!ready || !token || !id) return;
     void loadPlans();
   }, [ready, token, id, loadPlans]);
+
+  useEffect(() => {
+    if (!ready || !token || !id) return;
+    void loadProgress();
+  }, [ready, token, id, loadProgress]);
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -129,6 +154,7 @@ export default function PatientDetailPage() {
       setPatient(updated);
       void loadNotes();
       void loadPlans();
+      void loadProgress();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -270,6 +296,50 @@ export default function PatientDetailPage() {
                   {plan._count.items} exercise
                   {plan._count.items === 1 ? "" : "s"}
                 </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-md border border-zinc-200 p-4 dark:border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold tracking-tight">Progress</h2>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/progress?patientId=${encodeURIComponent(patient.id)}`}
+              className="text-xs font-medium underline"
+            >
+              View all
+            </Link>
+            <Link
+              href={`/progress/new?patientId=${encodeURIComponent(patient.id)}`}
+              className="text-xs font-medium text-zinc-700 underline dark:text-zinc-300"
+            >
+              New entry
+            </Link>
+          </div>
+        </div>
+        {progressLoading ? (
+          <p className="mt-2 text-sm text-zinc-500">Loading progress…</p>
+        ) : progressRows.length === 0 ? (
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            No progress entries yet.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {progressRows.slice(0, 5).map((r) => (
+              <li key={r.id}>
+                <Link
+                  href={`/progress/${r.id}`}
+                  className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+                >
+                  {new Date(r.recordedOn).toLocaleDateString()} — pain{" "}
+                  {r.painLevel}
+                  {r.mobilityScore != null
+                    ? ` · mobility ${r.mobilityScore}`
+                    : ""}
+                </Link>
               </li>
             ))}
           </ul>

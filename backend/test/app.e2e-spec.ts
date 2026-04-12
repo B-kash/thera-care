@@ -63,6 +63,14 @@ describe('AppController (e2e)', () => {
           delete: async () => ({}),
           aggregate: async () => ({ _max: { sortOrder: null } }),
         },
+        progressRecord: {
+          findMany: async () => [],
+          findUnique: async () => null,
+          create: async () => ({}),
+          update: async () => ({}),
+          delete: async () => ({}),
+          count: async () => 0,
+        },
       })
       .compile();
 
@@ -111,5 +119,9 @@ describe('AppController (e2e)', () => {
 
   it('/exercise-plans (GET) without token returns 401', () => {
     return request(app.getHttpServer()).get('/exercise-plans').expect(401);
+  });
+
+  it('/progress (GET) without token returns 401', () => {
+    return request(app.getHttpServer()).get('/progress').expect(401);
   });
 });

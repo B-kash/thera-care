@@ -31,6 +31,7 @@ model User {
   appointmentsAsStaff Appointment[] @relation("AppointmentStaffUser")
   treatmentNotes      TreatmentNote[]
   exercisePlans       ExercisePlan[]
+  progressRecords     ProgressRecord[]
 
   @@map("users")
 }
@@ -50,6 +51,7 @@ model Patient {
   appointments    Appointment[]
   treatmentNotes  TreatmentNote[]
   exercisePlans   ExercisePlan[]
+  progressRecords ProgressRecord[]
 
   @@map("patients")
 }
@@ -117,4 +119,22 @@ model ExerciseItem {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@map("exercise_items")
+}
+
+/// Snapshot of patient progress (pain, mobility) on a given calendar date.
+model ProgressRecord {
+  id             String   @id @default(uuid())
+  patientId      String   @map("patient_id")
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  authorUserId   String   @map("author_user_id")
+  author         User     @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  painLevel      Int      @map("pain_level")
+  mobilityScore  Int?     @map("mobility_score")
+  notes          String?  @db.Text
+  recordedOn     DateTime @map("recorded_on") @db.Date
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([patientId, recordedOn])
+  @@map("progress_records")
 }
