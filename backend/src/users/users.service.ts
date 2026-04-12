@@ -5,8 +5,15 @@ import { PrismaService } from '../prisma/prisma.service';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAllForScaffold() {
+  findAllSafe() {
     return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoutButton } from "./logout-button";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -16,7 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
           <p className="mt-1 text-xs text-zinc-500">Physio practice</p>
         </div>
-        <nav className="flex flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1 p-3">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -27,6 +28,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
+          <LogoutButton />
+        </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <main className="flex-1 px-6 py-8">{children}</main>

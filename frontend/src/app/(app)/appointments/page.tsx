@@ -3,8 +3,8 @@ export default function AppointmentsPage() {
     <div className="space-y-2">
       <h1 className="text-2xl font-semibold tracking-tight">Appointments</h1>
       <p className="max-w-xl text-sm text-zinc-600 dark:text-zinc-400">
-        Phase 1 placeholder. Calendar and booking flows will ship after core auth
-        and patient data are in place.
+        Calendar and booking flows will ship after patients and scheduling data
+        are in place.
       </p>
     </div>
   );
