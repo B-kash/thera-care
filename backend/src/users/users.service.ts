@@ -7,6 +7,8 @@ import {
 import * as bcrypt from 'bcrypt';
 import { AuditService } from '../audit/audit.service';
 import type { AuditRequestContext } from '../audit/audit-request.util';
+import { TwoFactorService } from '../auth/two-factor.service';
+import type { RequestUser } from '../auth/strategies/jwt.strategy';
 import {
   AuditAction,
   AuditEntityType,
@@ -39,6 +41,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly twoFactor: TwoFactorService,
   ) {}
 
   async listForAdmin(
@@ -62,6 +65,23 @@ export class UsersService {
       skip,
       take,
     });
+  }
+
+  async adminClearTwoFactor(actor: RequestUser, targetUserId: string) {
+    if (actor.userId === targetUserId) {
+      throw new BadRequestException(
+        "Clear another user's 2FA from the admin path, or disable your own 2FA in Security with password + code.",
+      );
+    }
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, tenantId: actor.tenantId },
+      select: { id: true },
+    });
+    if (!target) {
+      throw new NotFoundException('User not found in this clinic');
+    }
+    await this.twoFactor.clearTotpAndBackupCodes(target.id);
+    return { ok: true as const, userId: target.id };
   }
 
   async create(
@@ -121,15 +141,10 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    await this.assertKeepsAtLeastOneAdmin(
-      id,
-      ctx.tenantId,
-      current,
-      {
-        role: dto.role,
-        active: dto.active,
-      },
-    );
+    await this.assertKeepsAtLeastOneAdmin(id, ctx.tenantId, current, {
+      role: dto.role,
+      active: dto.active,
+    });
 
     const data: Prisma.UserUpdateInput = {};
     if (dto.displayName !== undefined) {

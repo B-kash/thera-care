@@ -76,6 +76,9 @@ model User {
   displayName          String?         @map("display_name")
   role                 UserRole        @default(THERAPIST)
   active               Boolean         @default(true) @map("active")
+  totpEnabled          Boolean         @default(false) @map("totp_enabled")
+  totpSecretEnc        String?         @map("totp_secret_enc") @db.Text
+  totpPendingSecretEnc String?         @map("totp_pending_secret_enc") @db.Text
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")
   patients             Patient[]
@@ -85,10 +88,24 @@ model User {
   progressRecords     ProgressRecord[]
   auditLogs           AuditLog[]
   emailAuthTokens     EmailAuthToken[]
+  twoFactorBackupCodes TwoFactorBackupCode[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@map("users")
+}
+
+/// One-time backup codes for TOTP recovery (hashed at rest).
+model TwoFactorBackupCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("two_factor_backup_codes")
 }
 
 /// One-time email links for password reset or passwordless login (hashed at rest).
@@ -221,7 +238,7 @@ model ExerciseItem {
   exercisePlanId String       @map("exercise_plan_id")
   exercisePlan   ExercisePlan @relation(fields: [exercisePlanId], references: [id], onDelete: Cascade)
   name           String
-  instructions   String?      @db.Text
+  instructions   String?    @db.Text
   sets           Int?
   reps           Int?
   sortOrder      Int          @default(0) @map("sort_order")

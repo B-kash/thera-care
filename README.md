@@ -79,6 +79,12 @@ On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those tw
 
 Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-logs` (supports `entityType`, `actorUserId`, `action`, `skip`, `take`). See [docs/AUDIT_LOGS.md](docs/AUDIT_LOGS.md) for retention notes.
 
+### Two-factor authentication (TOTP)
+
+- **UI:** Use **Security** in the sidebar to enroll (authenticator app + backup codes shown once). When 2FA is on, **login** asks for an authenticator or backup code after the password.
+- **Admin recovery:** With an **ADMIN** session, `POST /users/:userId/two-factor/clear` clears another user’s TOTP and backup codes in the same clinic so they can re-enroll (does not change their password). Self-service **turn off 2FA** still requires password plus a valid code on **Security**.
+- **Configuration:** `backend/.env.example` documents `TOTP_ENCRYPTION_KEY` (recommended in production), `PRE_2FA_JWT_SECRET`, and optional `REQUIRE_2FA_FOR_ADMIN` (read the bootstrap note there before enabling).
+
 ### Password reset & magic-link sign-in (FR-16)
 
 - **Forgot password:** `/login/forgot-password` → `POST /auth/password-reset/request` (optional **`tenantSlug`**, default clinic `default`) → email contains a link to `/login/reset-password?token=…` → `POST /auth/password-reset/confirm`.

@@ -1,6 +1,11 @@
+jest.mock('../auth/two-factor.service', () => ({
+  TwoFactorService: class TwoFactorService {},
+}));
+
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuditService } from '../audit/audit.service';
+import { TwoFactorService } from '../auth/two-factor.service';
 import { UserRole } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from './users.service';
@@ -18,6 +23,7 @@ describe('UsersService', () => {
       count: jest.fn(),
     },
   };
+  const twoFactor = { clearTotpAndBackupCodes: jest.fn() };
 
   const ctx = {
     tenantId: 't1',
@@ -33,6 +39,7 @@ describe('UsersService', () => {
         UsersService,
         { provide: PrismaService, useValue: prisma },
         { provide: AuditService, useValue: audit },
+        { provide: TwoFactorService, useValue: twoFactor },
       ],
     }).compile();
 

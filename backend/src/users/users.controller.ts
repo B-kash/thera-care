@@ -54,4 +54,17 @@ export class UsersController {
   ) {
     return this.usersService.update(id, dto, auditContextFromRequest(req));
   }
+
+  /**
+   * Clears TOTP + backup codes for another user in the same clinic (lost device).
+   * Target user must re-enroll from Security. Does not change their password.
+   */
+  @Post(':id/two-factor/clear')
+  @Roles(UserRole.ADMIN)
+  adminClearTwoFactor(
+    @Param('id', ParseUUIDPipe) targetUserId: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.usersService.adminClearTwoFactor(req.user, targetUserId);
+  }
 }

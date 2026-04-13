@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import type { StringValue } from 'ms';
 import { AuthController } from './auth.controller';
@@ -9,6 +9,8 @@ import { EmailAuthTokenService } from './email-auth-token.service';
 import { MailerService } from './mailer.service';
 import { RolesGuard } from './roles.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { TotpCryptoService } from './totp-crypto.service';
+import { TwoFactorService } from './two-factor.service';
 
 @Module({
   imports: [
@@ -27,12 +29,33 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   ],
   controllers: [AuthController],
   providers: [
+    {
+      provide: 'PRE_2FA_JWT',
+      useFactory: (config: ConfigService) =>
+        new JwtService({
+          secret:
+            config.get<string>('PRE_2FA_JWT_SECRET')?.trim() ||
+            `${config.getOrThrow<string>('JWT_SECRET')}.pre2fa`,
+          signOptions: {
+            expiresIn: '10m' as StringValue,
+          },
+        }),
+      inject: [ConfigService],
+    },
+    TotpCryptoService,
+    TwoFactorService,
     MailerService,
     EmailAuthTokenService,
     AuthService,
     JwtStrategy,
     RolesGuard,
   ],
-  exports: [AuthService, JwtModule, PassportModule, RolesGuard],
+  exports: [
+    AuthService,
+    JwtModule,
+    PassportModule,
+    RolesGuard,
+    TwoFactorService,
+  ],
 })
 export class AuthModule {}
