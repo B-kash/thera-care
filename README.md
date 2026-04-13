@@ -79,6 +79,14 @@ On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those tw
 
 Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-logs` (supports `entityType`, `actorUserId`, `action`, `skip`, `take`). See [docs/AUDIT_LOGS.md](docs/AUDIT_LOGS.md) for retention notes.
 
+### Users (admins)
+
+**ADMIN** sees **Users** in the sidebar (`GET` / `POST` / `PATCH /users/:id`). User create/update and role or active changes emit **USER** rows on the audit trail.
+
+For production-style lockdown, set **`ALLOW_PUBLIC_REGISTER=false`** on the API so `POST /auth/register` returns **403**. Set **`NEXT_PUBLIC_ALLOW_PUBLIC_REGISTER=false`** on the Next.js build so the login screen hides **Register** (same default rule as the API: unset allows signup in non-production only).
+
+**First administrator:** with public registration on, sign up once, then promote that user in your clinic (SQL or admin tooling) — e.g. `UPDATE users SET role = 'ADMIN' WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'default') AND lower(email) = lower('you@example.com');`. With registration off, insert the first user via SQL or a one-off script, then manage everyone else from **Users**.
+
 ### Progressive Web App (FR-13)
 
 - **Manifest & icons:** `frontend/src/app/manifest.ts` and `frontend/public/icons/*.png` (replace PNGs when branding changes).

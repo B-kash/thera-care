@@ -23,6 +23,7 @@ export type AuthUser = {
   email: string;
   displayName: string | null;
   role: UserRole;
+  active: boolean;
   tenantId: string;
   tenant: AuthTenant;
   createdAt: string;

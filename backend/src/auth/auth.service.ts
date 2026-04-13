@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -10,6 +11,7 @@ import type { UserRole } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { isPublicRegisterAllowed } from './public-register.util';
 import { AccessTokenPayload } from './strategies/jwt.strategy';
 
 const BCRYPT_ROUNDS = 10;
@@ -22,9 +24,14 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<{ accessToken: string }> {
+    if (!isPublicRegisterAllowed()) {
+      throw new ForbiddenException('Public registration is disabled');
+    }
+
     const tenant = await this.resolveTenant(dto.tenantSlug);
+    const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findFirst({
-      where: { email: dto.email, tenantId: tenant.id },
+      where: { email, tenantId: tenant.id },
     });
     if (existing) {
       throw new ConflictException(
@@ -36,9 +43,9 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         tenantId: tenant.id,
-        email: dto.email,
+        email,
         passwordHash,
-        displayName: dto.displayName,
+        displayName: dto.displayName?.trim() || null,
       },
     });
 
@@ -54,10 +61,14 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<{ accessToken: string }> {
     const tenant = await this.resolveTenant(dto.tenantSlug);
+    const email = dto.email.trim().toLowerCase();
     const user = await this.prisma.user.findFirst({
-      where: { email: dto.email, tenantId: tenant.id },
+      where: { email, tenantId: tenant.id },
     });
     if (!user?.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+    if (!user.active) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -84,6 +95,7 @@ export class AuthService {
         email: true,
         displayName: true,
         role: true,
+        active: true,
         tenantId: true,
         createdAt: true,
         updatedAt: true,
@@ -91,6 +103,9 @@ export class AuthService {
       },
     });
     if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (!user.active) {
       throw new UnauthorizedException();
     }
     return user;

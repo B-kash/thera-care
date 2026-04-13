@@ -7,8 +7,8 @@ import { AppointmentsService } from './appointments.service';
 const ctx = {
   tenantId: 't1',
   actorUserId: 'u1',
-  ip: null,
-  userAgent: null,
+  ip: null as string | null,
+  userAgent: null as string | null,
 };
 
 describe('AppointmentsService', () => {

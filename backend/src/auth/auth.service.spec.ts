@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserRole } from '../generated/prisma/client';
@@ -16,6 +20,10 @@ describe('AuthService', () => {
     },
   };
   const jwt = { signAsync: jest.fn().mockResolvedValue('signed-jwt') };
+
+  afterEach(() => {
+    delete process.env.ALLOW_PUBLIC_REGISTER;
+  });
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -60,6 +68,14 @@ describe('AuthService', () => {
     });
   });
 
+  it('register throws when public registration is disabled', async () => {
+    process.env.ALLOW_PUBLIC_REGISTER = 'false';
+
+    await expect(
+      service.register({ email: 'a@b.com', password: 'password1' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('register throws when email exists', async () => {
     prisma.user.findFirst.mockResolvedValue({ id: 'x' });
 
@@ -73,6 +89,21 @@ describe('AuthService', () => {
 
     await expect(
       service.login({ email: 'a@b.com', password: 'x' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('login throws when user is inactive', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'u1',
+      email: 'a@b.com',
+      passwordHash: 'hash',
+      active: false,
+      tenantId: 'tid',
+      role: UserRole.THERAPIST,
+    });
+
+    await expect(
+      service.login({ email: 'a@b.com', password: 'any' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
