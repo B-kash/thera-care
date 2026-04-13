@@ -79,6 +79,12 @@ On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those tw
 
 Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-logs` (supports `entityType`, `actorUserId`, `action`, `skip`, `take`). See [docs/AUDIT_LOGS.md](docs/AUDIT_LOGS.md) for retention notes.
 
+### Two-factor authentication (TOTP)
+
+- **UI:** Use **Security** in the sidebar to enroll (authenticator app + backup codes shown once). When 2FA is on, **login** asks for an authenticator or backup code after the password.
+- **Admin recovery:** With an **ADMIN** session, `POST /users/:userId/two-factor/clear` clears another user’s TOTP and backup codes in the same clinic so they can re-enroll (does not change their password). Self-service **turn off 2FA** still requires password plus a valid code on **Security**.
+- **Configuration:** `backend/.env.example` documents `TOTP_ENCRYPTION_KEY` (recommended in production), `PRE_2FA_JWT_SECRET`, and optional `REQUIRE_2FA_FOR_ADMIN` (read the bootstrap note there before enabling).
+
 ### Progressive Web App (FR-13)
 
 - **Manifest & icons:** `frontend/src/app/manifest.ts` and `frontend/public/icons/*.png` (replace PNGs when branding changes).

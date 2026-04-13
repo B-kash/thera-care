@@ -1,9 +1,15 @@
+jest.mock('./two-factor.service', () => ({
+  TwoFactorService: class TwoFactorService {},
+}));
+
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserRole } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { TwoFactorService } from './two-factor.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -16,6 +22,17 @@ describe('AuthService', () => {
     },
   };
   const jwt = { signAsync: jest.fn().mockResolvedValue('signed-jwt') };
+  const pre2faJwt = {
+    signAsync: jest.fn().mockResolvedValue('pre-auth-token'),
+    verifyAsync: jest.fn(),
+  };
+  const twoFactor = {
+    verifyTotpOrBackup: jest.fn(),
+    startEnrollment: jest.fn(),
+    confirmEnrollment: jest.fn(),
+    cancelEnrollment: jest.fn(),
+    clearTotpAndBackupCodes: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -29,6 +46,8 @@ describe('AuthService', () => {
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: JwtService, useValue: jwt },
+        { provide: 'PRE_2FA_JWT', useValue: pre2faJwt },
+        { provide: TwoFactorService, useValue: twoFactor },
       ],
     }).compile();
 
@@ -74,5 +93,33 @@ describe('AuthService', () => {
     await expect(
       service.login({ email: 'a@b.com', password: 'x' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('login returns preAuthToken when TOTP is enabled', async () => {
+    const compareSpy = jest
+      .spyOn(bcrypt, 'compare')
+      .mockResolvedValueOnce(true as never);
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'u1',
+      email: 'a@b.com',
+      passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
+      role: UserRole.THERAPIST,
+      tenantId: 'tid',
+      totpEnabled: true,
+    });
+
+    await expect(
+      service.login({ email: 'a@b.com', password: 'any' }),
+    ).resolves.toEqual({
+      twoFactorRequired: true,
+      preAuthToken: 'pre-auth-token',
+    });
+    expect(pre2faJwt.signAsync).toHaveBeenCalledWith({
+      sub: 'u1',
+      typ: 'pre_2fa',
+      tenantId: 'tid',
+    });
+    expect(jwt.signAsync).not.toHaveBeenCalled();
+    compareSpy.mockRestore();
   });
 });

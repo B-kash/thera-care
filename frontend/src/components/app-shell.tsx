@@ -14,6 +14,7 @@ const coreNavItems = [
   { href: "/treatment-notes", label: "Treatment notes" },
   { href: "/exercise-plans", label: "Exercise plans" },
   { href: "/progress", label: "Progress" },
+  { href: "/settings/security", label: "Security" },
 ] as const;
 
 function MenuIcon({ open }: { open: boolean }) {
