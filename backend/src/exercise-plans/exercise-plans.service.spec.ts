@@ -1,10 +1,18 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExercisePlansService } from './exercise-plans.service';
 
+const testCtx = {
+  actorUserId: 'u1',
+  ip: null as string | null,
+  userAgent: null as string | null,
+};
+
 describe('ExercisePlansService', () => {
   let service: ExercisePlansService;
+  const audit = { logEvent: jest.fn().mockResolvedValue(undefined) };
   const prisma = {
     patient: { count: jest.fn() },
     exercisePlan: {
@@ -30,6 +38,7 @@ describe('ExercisePlansService', () => {
       providers: [
         ExercisePlansService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditService, useValue: audit },
       ],
     }).compile();
 
@@ -40,7 +49,7 @@ describe('ExercisePlansService', () => {
     prisma.patient.count.mockResolvedValue(0);
 
     await expect(
-      service.create({ patientId: 'p1', title: 'Plan A' }, 'u1'),
+      service.create({ patientId: 'p1', title: 'Plan A' }, 'u1', testCtx),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

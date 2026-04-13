@@ -25,6 +25,11 @@ enum UserRole {
   STAFF
 }
 
+enum EmailAuthTokenPurpose {
+  PASSWORD_RESET
+  MAGIC_LINK
+}
+
 enum AuditAction {
   CREATE
   UPDATE
@@ -38,6 +43,7 @@ enum AuditEntityType {
   EXERCISE_PLAN
   EXERCISE_ITEM
   PROGRESS_RECORD
+  USER
 }
 
 /// Application user (physiotherapist / staff).
@@ -47,6 +53,7 @@ model User {
   passwordHash         String?         @map("password_hash")
   displayName          String?         @map("display_name")
   role                 UserRole        @default(THERAPIST)
+  active               Boolean         @default(true) @map("active")
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")
   patients             Patient[]
@@ -55,8 +62,25 @@ model User {
   exercisePlans       ExercisePlan[]
   progressRecords     ProgressRecord[]
   auditLogs           AuditLog[]
+  emailAuthTokens     EmailAuthToken[]
 
   @@map("users")
+}
+
+/// One-time email links for password reset or passwordless login (hashed at rest).
+model EmailAuthToken {
+  id        String                 @id @default(uuid())
+  userId    String                 @map("user_id")
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose   EmailAuthTokenPurpose
+  tokenHash String                 @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime               @map("expires_at")
+  usedAt    DateTime?              @map("used_at")
+  createdAt DateTime               @default(now()) @map("created_at")
+
+  @@unique([tokenHash])
+  @@index([userId, purpose])
+  @@map("email_auth_tokens")
 }
 
 /// Append-only security / clinical audit trail (no updates from app).
