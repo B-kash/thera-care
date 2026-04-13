@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -9,6 +10,7 @@ import type { UserRole } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { isPublicRegisterAllowed } from './public-register.util';
 import { AccessTokenPayload } from './strategies/jwt.strategy';
 
 const BCRYPT_ROUNDS = 10;
@@ -21,8 +23,13 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<{ accessToken: string }> {
+    if (!isPublicRegisterAllowed()) {
+      throw new ForbiddenException('Public registration is disabled');
+    }
+
+    const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
     });
     if (existing) {
       throw new ConflictException('An account with this email already exists');
@@ -31,9 +38,9 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email,
         passwordHash,
-        displayName: dto.displayName,
+        displayName: dto.displayName?.trim() || null,
       },
     });
 
@@ -43,10 +50,14 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<{ accessToken: string }> {
+    const email = dto.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
     });
     if (!user?.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+    if (!user.active) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -68,11 +79,15 @@ export class AuthService {
         email: true,
         displayName: true,
         role: true,
+        active: true,
         createdAt: true,
         updatedAt: true,
       },
     });
     if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (!user.active) {
       throw new UnauthorizedException();
     }
     return user;

@@ -17,6 +17,7 @@ export type AuthUser = {
   email: string;
   displayName: string | null;
   role: UserRole;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 };

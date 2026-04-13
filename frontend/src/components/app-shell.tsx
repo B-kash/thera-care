@@ -47,7 +47,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = useMemo(() => {
     const admin = isAdminRole(user?.role)
-      ? [{ href: "/audit-logs", label: "Audit logs" } as const]
+      ? ([
+          { href: "/users", label: "Users" } as const,
+          { href: "/audit-logs", label: "Audit logs" } as const,
+        ] as const)
       : [];
     return [...coreNavItems, ...admin];
   }, [user?.role]);

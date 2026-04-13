@@ -38,6 +38,7 @@ enum AuditEntityType {
   EXERCISE_PLAN
   EXERCISE_ITEM
   PROGRESS_RECORD
+  USER
 }
 
 /// Application user (physiotherapist / staff).
@@ -47,6 +48,7 @@ model User {
   passwordHash         String?         @map("password_hash")
   displayName          String?         @map("display_name")
   role                 UserRole        @default(THERAPIST)
+  active               Boolean         @default(true) @map("active")
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")
   patients             Patient[]

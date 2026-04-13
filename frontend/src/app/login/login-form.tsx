@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { formFieldClassName } from "@/lib/form-classes";
 import { useAuth } from "@/providers/auth-provider";
 import Link from "next/link";
+import { isPublicRegisterUiAllowed } from "@/lib/public-register";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const inputClassName = `mt-1 ${formFieldClassName}`;
 
@@ -16,7 +17,14 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") ?? "/dashboard";
 
+  const allowRegister = useMemo(() => isPublicRegisterUiAllowed(), []);
   const [mode, setMode] = useState<"login" | "register">("login");
+
+  useEffect(() => {
+    if (!allowRegister && mode === "register") {
+      setMode("login");
+    }
+  }, [allowRegister, mode]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -71,36 +79,38 @@ export function LoginForm() {
         {mode === "login" ? "Sign in to continue" : "Create your account"}
       </p>
 
-      <div className="mt-6 flex gap-1 rounded-lg border border-app-border/60 bg-app-muted/90 p-1">
-        <button
-          type="button"
-          className={`flex min-h-11 flex-1 touch-manipulation items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-            mode === "login"
-              ? "bg-app-elevated text-foreground shadow-sm"
-              : "text-foreground/65 hover:text-foreground"
-          }`}
-          onClick={() => {
-            setMode("login");
-            setError(null);
-          }}
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          className={`flex min-h-11 flex-1 touch-manipulation items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-            mode === "register"
-              ? "bg-app-elevated text-foreground shadow-sm"
-              : "text-foreground/65 hover:text-foreground"
-          }`}
-          onClick={() => {
-            setMode("register");
-            setError(null);
-          }}
-        >
-          Register
-        </button>
-      </div>
+      {allowRegister ? (
+        <div className="mt-6 flex gap-1 rounded-lg border border-app-border/60 bg-app-muted/90 p-1">
+          <button
+            type="button"
+            className={`flex min-h-11 flex-1 touch-manipulation items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              mode === "login"
+                ? "bg-app-elevated text-foreground shadow-sm"
+                : "text-foreground/65 hover:text-foreground"
+            }`}
+            onClick={() => {
+              setMode("login");
+              setError(null);
+            }}
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            className={`flex min-h-11 flex-1 touch-manipulation items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              mode === "register"
+                ? "bg-app-elevated text-foreground shadow-sm"
+                : "text-foreground/65 hover:text-foreground"
+            }`}
+            onClick={() => {
+              setMode("register");
+              setError(null);
+            }}
+          >
+            Register
+          </button>
+        </div>
+      ) : null}
 
       <form className="mt-6 space-y-4" onSubmit={onSubmit}>
         {mode === "register" && (
