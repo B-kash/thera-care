@@ -39,20 +39,27 @@ export class PatientsController {
     return this.patientsService.create(
       dto,
       req.user.userId,
+      req.user.tenantId,
       auditContextFromRequest(req),
     );
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findAll(@Query() query: ListPatientsQueryDto) {
-    return this.patientsService.findAll(query);
+  findAll(
+    @Query() query: ListPatientsQueryDto,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.patientsService.findAll(req.user.tenantId, query);
   }
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.patientsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.patientsService.findOne(req.user.tenantId, id);
   }
 
   @Patch(':id')
@@ -62,7 +69,12 @@ export class PatientsController {
     @Body() dto: UpdatePatientDto,
     @Req() req: Request & { user: RequestUser },
   ) {
-    return this.patientsService.update(id, dto, auditContextFromRequest(req));
+    return this.patientsService.update(
+      req.user.tenantId,
+      id,
+      dto,
+      auditContextFromRequest(req),
+    );
   }
 
   @Delete(':id')
@@ -72,6 +84,10 @@ export class PatientsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request & { user: RequestUser },
   ) {
-    await this.patientsService.remove(id, auditContextFromRequest(req));
+    await this.patientsService.remove(
+      req.user.tenantId,
+      id,
+      auditContextFromRequest(req),
+    );
   }
 }

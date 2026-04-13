@@ -5,8 +5,9 @@ import { PrismaService } from '../prisma/prisma.service';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAllSafe() {
+  findAllSafe(tenantId: string) {
     return this.prisma.user.findMany({
+      where: { tenantId },
       select: {
         id: true,
         email: true,

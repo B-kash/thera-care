@@ -39,20 +39,27 @@ export class AppointmentsController {
     return this.appointmentsService.create(
       dto,
       req.user.userId,
+      req.user.tenantId,
       auditContextFromRequest(req),
     );
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findAll(@Query() query: ListAppointmentsQueryDto) {
-    return this.appointmentsService.findAll(query);
+  findAll(
+    @Query() query: ListAppointmentsQueryDto,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.appointmentsService.findAll(req.user.tenantId, query);
   }
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.appointmentsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.appointmentsService.findOne(req.user.tenantId, id);
   }
 
   @Patch(':id')
@@ -63,6 +70,7 @@ export class AppointmentsController {
     @Req() req: Request & { user: RequestUser },
   ) {
     return this.appointmentsService.update(
+      req.user.tenantId,
       id,
       dto,
       auditContextFromRequest(req),
@@ -76,6 +84,10 @@ export class AppointmentsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request & { user: RequestUser },
   ) {
-    await this.appointmentsService.remove(id, auditContextFromRequest(req));
+    await this.appointmentsService.remove(
+      req.user.tenantId,
+      id,
+      auditContextFromRequest(req),
+    );
   }
 }

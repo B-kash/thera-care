@@ -51,11 +51,13 @@ export class TreatmentNotesService {
   async create(
     dto: CreateTreatmentNoteDto,
     authorUserId: string,
+    tenantId: string,
     ctx: AuditRequestContext,
   ): Promise<TreatmentNoteDto> {
-    await this.ensurePatientExists(dto.patientId);
+    await this.ensurePatientExists(tenantId, dto.patientId);
     if (dto.appointmentId) {
       await this.ensureAppointmentMatchesPatient(
+        tenantId,
         dto.appointmentId,
         dto.patientId,
       );
@@ -63,6 +65,7 @@ export class TreatmentNotesService {
 
     const row = await this.prisma.treatmentNote.create({
       data: {
+        tenantId,
         patientId: dto.patientId,
         authorUserId,
         appointmentId: dto.appointmentId ?? null,
@@ -84,10 +87,13 @@ export class TreatmentNotesService {
   }
 
   async findAllForPatient(
+    tenantId: string,
     query: ListTreatmentNotesQueryDto,
   ): Promise<TreatmentNoteDto[]> {
     const where: Prisma.TreatmentNoteWhereInput = {
+      tenantId,
       patientId: query.patientId,
+      patient: { tenantId },
     };
     if (query.appointmentId) {
       where.appointmentId = query.appointmentId;
@@ -101,9 +107,9 @@ export class TreatmentNotesService {
     });
   }
 
-  async findOne(id: string): Promise<TreatmentNoteDto> {
-    const row = await this.prisma.treatmentNote.findUnique({
-      where: { id },
+  async findOne(tenantId: string, id: string): Promise<TreatmentNoteDto> {
+    const row = await this.prisma.treatmentNote.findFirst({
+      where: { id, tenantId },
       select: noteSelect,
     });
     if (!row) {
@@ -113,12 +119,13 @@ export class TreatmentNotesService {
   }
 
   async update(
+    tenantId: string,
     id: string,
     dto: UpdateTreatmentNoteDto,
     ctx: AuditRequestContext,
   ): Promise<TreatmentNoteDto> {
-    const existing = await this.prisma.treatmentNote.findUnique({
-      where: { id },
+    const existing = await this.prisma.treatmentNote.findFirst({
+      where: { id, tenantId },
     });
     if (!existing) {
       throw new NotFoundException('Treatment note not found');
@@ -126,6 +133,7 @@ export class TreatmentNotesService {
 
     if (dto.appointmentId !== undefined && dto.appointmentId !== null) {
       await this.ensureAppointmentMatchesPatient(
+        tenantId,
         dto.appointmentId,
         existing.patientId,
       );
@@ -152,7 +160,7 @@ export class TreatmentNotesService {
     }
 
     const row = await this.prisma.treatmentNote.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       select: noteSelect,
     });
@@ -166,15 +174,15 @@ export class TreatmentNotesService {
     return row;
   }
 
-  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
-    const existing = await this.prisma.treatmentNote.findUnique({
-      where: { id },
+  async remove(tenantId: string, id: string, ctx: AuditRequestContext): Promise<void> {
+    const existing = await this.prisma.treatmentNote.findFirst({
+      where: { id, tenantId },
       select: { patientId: true },
     });
     if (!existing) {
       throw new NotFoundException('Treatment note not found');
     }
-    await this.prisma.treatmentNote.delete({ where: { id } });
+    await this.prisma.treatmentNote.delete({ where: { id, tenantId } });
     await this.audit.logEvent({
       context: ctx,
       action: AuditAction.DELETE,
@@ -184,19 +192,23 @@ export class TreatmentNotesService {
     });
   }
 
-  private async ensurePatientExists(patientId: string): Promise<void> {
-    const n = await this.prisma.patient.count({ where: { id: patientId } });
+  private async ensurePatientExists(
+    tenantId: string,
+    patientId: string,
+  ): Promise<void> {
+    const n = await this.prisma.patient.count({ where: { id: patientId, tenantId } });
     if (n === 0) {
       throw new NotFoundException('Patient not found');
     }
   }
 
   private async ensureAppointmentMatchesPatient(
+    tenantId: string,
     appointmentId: string,
     patientId: string,
   ): Promise<void> {
-    const appt = await this.prisma.appointment.findUnique({
-      where: { id: appointmentId },
+    const appt = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, tenantId },
     });
     if (!appt) {
       throw new NotFoundException('Appointment not found');

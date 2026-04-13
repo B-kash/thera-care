@@ -1,8 +1,10 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import type { Request } from 'express';
 import { UserRole } from '../generated/prisma/client';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import type { RequestUser } from '../auth/strategies/jwt.strategy';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -12,7 +14,7 @@ export class UsersController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findAll() {
-    return this.usersService.findAllSafe();
+  findAll(@Req() req: Request & { user: RequestUser }) {
+    return this.usersService.findAllSafe(req.user.tenantId);
   }
 }

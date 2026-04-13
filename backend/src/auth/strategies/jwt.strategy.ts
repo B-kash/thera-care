@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import type { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { UserRole } from '../../generated/prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 import { ACCESS_TOKEN_COOKIE } from '../auth.constants';
 
 const USER_ROLES: readonly string[] = ['ADMIN', 'THERAPIST', 'STAFF'];
@@ -12,12 +13,14 @@ export type AccessTokenPayload = {
   sub: string;
   email: string;
   role?: string;
+  tenantId?: string;
 };
 
 export type RequestUser = {
   userId: string;
   email: string;
   role: UserRole;
+  tenantId: string;
 };
 
 function cookieExtractor(req: Request): string | null {
@@ -34,7 +37,10 @@ function parseRole(value: unknown): UserRole {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         cookieExtractor,
@@ -45,11 +51,22 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  validate(payload: AccessTokenPayload): RequestUser {
-    return {
+  async validate(payload: AccessTokenPayload): Promise<RequestUser> {
+    const base = {
       userId: payload.sub,
       email: payload.email,
       role: parseRole(payload.role),
     };
+    if (typeof payload.tenantId === 'string' && payload.tenantId.length > 0) {
+      return { ...base, tenantId: payload.tenantId };
+    }
+    const row = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { tenantId: true },
+    });
+    if (!row) {
+      throw new UnauthorizedException();
+    }
+    return { ...base, tenantId: row.tenantId };
   }
 }

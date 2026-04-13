@@ -4,7 +4,10 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PatientsService } from './patients.service';
 
+const tenantId = '00000000-0000-4000-8000-000000000001';
+
 const auditCtx = {
+  tenantId,
   actorUserId: 'user-1',
   ip: null,
   userAgent: null,
@@ -17,6 +20,7 @@ describe('PatientsService', () => {
     patient: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -47,12 +51,14 @@ describe('PatientsService', () => {
         email: 'a@b.com',
       },
       'user-1',
+      tenantId,
       auditCtx,
     );
 
     expect(prisma.patient.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          tenantId,
           firstName: 'Ann',
           lastName: 'Lee',
           email: 'a@b.com',
@@ -63,9 +69,9 @@ describe('PatientsService', () => {
   });
 
   it('findOne throws when missing', async () => {
-    prisma.patient.findUnique.mockResolvedValue(null);
+    prisma.patient.findFirst.mockResolvedValue(null);
 
-    await expect(service.findOne('missing-id')).rejects.toBeInstanceOf(
+    await expect(service.findOne(tenantId, 'missing-id')).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
