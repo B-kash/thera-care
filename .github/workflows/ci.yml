@@ -13,8 +13,40 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/**'
+              - 'docker-compose.yml'
+              - 'package.json'
+              - 'lint-staged.config.mjs'
+              - '.husky/**'
+              - 'scripts/**'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'lint-staged.config.mjs'
+              - '.husky/**'
+              - 'scripts/**'
+
   backend:
     name: Backend (lint, test, build)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     env:
       CI: true
@@ -36,6 +68,8 @@ jobs:
 
   frontend:
     name: Frontend (lint, build)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -50,3 +84,23 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  # Single check for branch protection: succeeds when nothing matched, or when
+  # backend/frontend jobs passed; fails only if a ran job failed.
+  ci:
+    name: CI
+    needs: [changes, backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify no failed jobs
+        run: |
+          if [ "${{ needs.backend.result }}" = "failure" ]; then
+            echo "Backend job failed"
+            exit 1
+          fi
+          if [ "${{ needs.frontend.result }}" = "failure" ]; then
+            echo "Frontend job failed"
+            exit 1
+          fi
+          echo "OK (backend=${{ needs.backend.result }} frontend=${{ needs.frontend.result }})"
