@@ -4,6 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { formFieldClassName } from "@/lib/form-classes";
 import { apiFetchJson } from "@/lib/api";
+import { defaultTenantSlugBody } from "@/lib/default-tenant-slug";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -22,7 +23,10 @@ export default function ForgotPasswordPage() {
     try {
       await apiFetchJson<{ ok: boolean }>("/auth/password-reset/request", {
         method: "POST",
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({
+          email: email.trim(),
+          ...defaultTenantSlugBody(),
+        }),
       });
       setSent(true);
     } catch (err) {

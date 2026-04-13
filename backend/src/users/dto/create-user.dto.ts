@@ -1,12 +1,15 @@
 import {
+  IsBoolean,
   IsEmail,
+  IsEnum,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { UserRole } from '../../generated/prisma/client';
 
-export class RegisterDto {
+export class CreateUserDto {
   @IsEmail()
   email: string;
 
@@ -20,9 +23,10 @@ export class RegisterDto {
   @MaxLength(120)
   displayName?: string;
 
-  /** Which clinic (tenant). Defaults to slug `default` when omitted. */
+  @IsEnum(UserRole)
+  role: UserRole;
+
   @IsOptional()
-  @IsString()
-  @MaxLength(64)
-  tenantSlug?: string;
+  @IsBoolean()
+  active?: boolean;
 }

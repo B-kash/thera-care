@@ -4,7 +4,8 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProgressService } from './progress.service';
 
-const testCtx = {
+const ctx = {
+  tenantId: 't1',
   actorUserId: 'u1',
   ip: null as string | null,
   userAgent: null as string | null,
@@ -18,6 +19,7 @@ describe('ProgressService', () => {
     progressRecord: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -49,7 +51,8 @@ describe('ProgressService', () => {
           recordedOn: '2026-04-12',
         },
         'u1',
-        testCtx,
+        't1',
+        ctx,
       ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });

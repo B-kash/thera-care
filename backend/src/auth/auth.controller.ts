@@ -57,7 +57,7 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async requestPasswordReset(@Body() dto: RequestEmailDto) {
-    await this.authService.requestPasswordReset(dto.email);
+    await this.authService.requestPasswordReset(dto.email, dto.tenantSlug);
     return { ok: true };
   }
 
@@ -73,7 +73,7 @@ export class AuthController {
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async requestMagicLink(@Body() dto: RequestEmailDto) {
-    await this.authService.requestMagicLink(dto.email);
+    await this.authService.requestMagicLink(dto.email, dto.tenantSlug);
     return { ok: true };
   }
 
