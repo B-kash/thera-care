@@ -74,7 +74,7 @@ export function LoginForm() {
       <div className="mt-6 flex gap-1 rounded-lg border border-app-border/60 bg-app-muted/90 p-1">
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+          className={`flex min-h-11 flex-1 touch-manipulation items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
             mode === "login"
               ? "bg-app-elevated text-foreground shadow-sm"
               : "text-foreground/65 hover:text-foreground"
@@ -88,7 +88,7 @@ export function LoginForm() {
         </button>
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+          className={`flex min-h-11 flex-1 touch-manipulation items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
             mode === "register"
               ? "bg-app-elevated text-foreground shadow-sm"
               : "text-foreground/65 hover:text-foreground"

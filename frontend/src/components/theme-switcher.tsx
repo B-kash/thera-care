@@ -28,7 +28,7 @@ export function ThemeSwitcher() {
         id="theme-palette"
         value={palette}
         onChange={(e) => setPalette(e.target.value as PaletteId)}
-        className="min-h-11 max-w-[9rem] rounded-md border border-app-border bg-app-elevated px-2 text-foreground sm:min-h-8 sm:max-w-[8rem]"
+        className="min-h-11 max-w-[9rem] touch-manipulation rounded-md border border-app-border bg-app-elevated px-2 text-foreground sm:min-h-8 sm:max-w-[8rem]"
       >
         {PALETTES.map((p) => (
           <option key={p.id} value={p.id}>
@@ -43,7 +43,7 @@ export function ThemeSwitcher() {
         id="theme-mode"
         value={mode}
         onChange={(e) => setMode(e.target.value as ColorMode)}
-        className="min-h-11 max-w-[9rem] rounded-md border border-app-border bg-app-elevated px-2 text-foreground sm:min-h-8 sm:max-w-[8rem]"
+        className="min-h-11 max-w-[9rem] touch-manipulation rounded-md border border-app-border bg-app-elevated px-2 text-foreground sm:min-h-8 sm:max-w-[8rem]"
       >
         {MODES.map((m) => (
           <option key={m.id} value={m.id}>
