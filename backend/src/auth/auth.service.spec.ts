@@ -146,13 +146,12 @@ describe('AuthService', () => {
   });
 
   it('login returns preAuthToken when TOTP is enabled', async () => {
-    const compareSpy = jest
-      .spyOn(bcrypt, 'compare')
-      .mockResolvedValueOnce(true as never);
+    const password = 'correct-password-1';
+    const passwordHash = await bcrypt.hash(password, 4);
     prisma.user.findFirst.mockResolvedValue({
       id: 'u1',
       email: 'a@b.com',
-      passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
+      passwordHash,
       role: UserRole.THERAPIST,
       tenantId: 'tid',
       active: true,
@@ -160,7 +159,7 @@ describe('AuthService', () => {
     });
 
     await expect(
-      service.login({ email: 'a@b.com', password: 'any' }),
+      service.login({ email: 'a@b.com', password }),
     ).resolves.toEqual({
       twoFactorRequired: true,
       preAuthToken: 'pre-auth-token',
@@ -171,7 +170,6 @@ describe('AuthService', () => {
       tenantId: 'tid',
     });
     expect(jwt.signAsync).not.toHaveBeenCalled();
-    compareSpy.mockRestore();
   });
 
   it('requestPasswordReset sends mail when user exists with password', async () => {

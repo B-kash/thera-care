@@ -11,12 +11,10 @@ function MagicConsumeInner() {
   const token = searchParams.get("token")?.trim() ?? "";
 
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(true);
+  const [pending, setPending] = useState(Boolean(token));
 
   useEffect(() => {
     if (!token) {
-      setError("This page needs a valid token from your email link.");
-      setPending(false);
       return;
     }
 

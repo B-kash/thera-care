@@ -2,7 +2,7 @@ import { Transform } from 'class-transformer';
 import { IsString, Matches } from 'class-validator';
 
 export class TotpSetupConfirmDto {
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }): unknown =>
     typeof value === 'string' ? value.replace(/\s+/g, '') : value,
   )
   @IsString()

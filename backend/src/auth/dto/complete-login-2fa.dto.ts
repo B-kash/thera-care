@@ -7,7 +7,7 @@ export class CompleteLogin2faDto {
   @MaxLength(4096)
   preAuthToken: string;
 
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }): unknown =>
     typeof value === 'string' ? value.replace(/\s+/g, '') : value,
   )
   @IsString()

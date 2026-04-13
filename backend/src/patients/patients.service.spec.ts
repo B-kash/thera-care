@@ -71,8 +71,8 @@ describe('PatientsService', () => {
   it('findOne throws when missing', async () => {
     prisma.patient.findFirst.mockResolvedValue(null);
 
-    await expect(service.findOne(tenantId, 'missing-id')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.findOne(tenantId, 'missing-id'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

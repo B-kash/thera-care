@@ -1,0 +1,48 @@
+# Replace the image. Build the frontend with:
+#   --build-arg BACKEND_INTERNAL_URL=http://thera-care-backend:4000
+# so Next rewrites /api/* to the cluster Service above.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thera-care-frontend
+  labels:
+    app.kubernetes.io/name: thera-care-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thera-care-frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: thera-care-frontend
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/REPLACE_ORG/thera-care-frontend:REPLACE_TAG
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi

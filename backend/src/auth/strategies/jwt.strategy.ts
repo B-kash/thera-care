@@ -22,7 +22,8 @@ export type RequestUser = {
 };
 
 function cookieExtractor(req: Request): string | null {
-  const raw = req?.cookies?.[ACCESS_TOKEN_COOKIE];
+  const jar = req.cookies as Record<string, unknown> | undefined;
+  const raw = jar?.[ACCESS_TOKEN_COOKIE];
   return typeof raw === 'string' && raw.length > 0 ? raw : null;
 }
 

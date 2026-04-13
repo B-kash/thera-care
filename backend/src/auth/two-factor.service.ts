@@ -50,7 +50,9 @@ export class TwoFactorService {
       throw new BadRequestException('User not found');
     }
     if (user.totpEnabled) {
-      throw new ConflictException('Two-factor authentication is already enabled');
+      throw new ConflictException(
+        'Two-factor authentication is already enabled',
+      );
     }
     const secretBase32 = generateSecret();
     const enc = this.totpCrypto.encryptUtf8(secretBase32);
@@ -89,7 +91,9 @@ export class TwoFactorService {
       throw new BadRequestException('No enrollment in progress');
     }
     if (user.totpEnabled) {
-      throw new ConflictException('Two-factor authentication is already enabled');
+      throw new ConflictException(
+        'Two-factor authentication is already enabled',
+      );
     }
     const secret = this.totpCrypto.decryptUtf8(user.totpPendingSecretEnc);
     const { valid } = await verify({

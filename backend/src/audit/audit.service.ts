@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
-import {
-  AuditAction,
-  AuditEntityType,
-} from '../generated/prisma/client';
+import { AuditAction, AuditEntityType } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuditRequestContext } from './audit-request.util';
 import type { ListAuditLogsQueryDto } from './dto/list-audit-logs-query.dto';

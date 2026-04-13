@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/**'
+              - 'docker-compose.yml'
+              - 'package.json'
+              - 'lint-staged.config.mjs'
+              - '.husky/**'
+              - 'scripts/**'
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/**'
+              - 'package.json'
+              - 'lint-staged.config.mjs'
+              - '.husky/**'
+              - 'scripts/**'
+
+  backend:
+    name: Backend (lint, test, build)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma validate
+      # Generated client is gitignored; without it ESLint resolves Prisma types as
+      # error/any and reports hundreds of no-unsafe-* violations (local dev has
+      # usually already run generate).
+      - run: npx prisma generate
+      - run: npm run lint:ci
+      - run: npm test
+      - run: npm run build
+
+  frontend:
+    name: Frontend (lint, build)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  # Single check for branch protection: succeeds when nothing matched, or when
+  # backend/frontend jobs passed; fails only if a ran job failed.
+  ci:
+    name: CI
+    needs: [changes, backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify no failed jobs
+        run: |
+          if [ "${{ needs.backend.result }}" = "failure" ]; then
+            echo "Backend job failed"
+            exit 1
+          fi
+          if [ "${{ needs.frontend.result }}" = "failure" ]; then
+            echo "Frontend job failed"
+            exit 1
+          fi
+          echo "OK (backend=${{ needs.backend.result }} frontend=${{ needs.frontend.result }})"

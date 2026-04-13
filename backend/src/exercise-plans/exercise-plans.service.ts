@@ -175,7 +175,11 @@ export class ExercisePlansService {
     return row;
   }
 
-  async remove(tenantId: string, id: string, ctx: AuditRequestContext): Promise<void> {
+  async remove(
+    tenantId: string,
+    id: string,
+    ctx: AuditRequestContext,
+  ): Promise<void> {
     const existing = await this.prisma.exercisePlan.findFirst({
       where: { id, tenantId },
       select: { patientId: true },
@@ -202,17 +206,14 @@ export class ExercisePlansService {
     await this.ensurePlanExists(tenantId, planId);
 
     const sortOrder =
-      dto.sortOrder ??
-      (await this.nextItemSortOrder(tenantId, planId));
+      dto.sortOrder ?? (await this.nextItemSortOrder(tenantId, planId));
 
     const row = await this.prisma.exerciseItem.create({
       data: {
         tenantId,
         exercisePlanId: planId,
         name: dto.name.trim(),
-        instructions: dto.instructions?.trim()
-          ? dto.instructions.trim()
-          : null,
+        instructions: dto.instructions?.trim() ? dto.instructions.trim() : null,
         sets: dto.sets ?? null,
         reps: dto.reps ?? null,
         sortOrder,
@@ -297,7 +298,9 @@ export class ExercisePlansService {
     tenantId: string,
     patientId: string,
   ): Promise<void> {
-    const n = await this.prisma.patient.count({ where: { id: patientId, tenantId } });
+    const n = await this.prisma.patient.count({
+      where: { id: patientId, tenantId },
+    });
     if (n === 0) {
       throw new NotFoundException('Patient not found');
     }

@@ -1,0 +1,53 @@
+# Replace the image with your registry + immutable tag (digest or semver).
+# Create Secret `thera-care-backend-secrets` in namespace `thera-care` with at least:
+#   DATABASE_URL, JWT_SECRET, JWT_EXPIRES_IN, FRONTEND_ORIGIN
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thera-care-backend
+  labels:
+    app.kubernetes.io/name: thera-care-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thera-care-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: thera-care-backend
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/REPLACE_ORG/thera-care-backend:REPLACE_TAG
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+              name: http
+          envFrom:
+            - secretRef:
+                name: thera-care-backend-secrets
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi

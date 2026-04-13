@@ -195,8 +195,7 @@ export class AppointmentsService {
           : { connect: { id: dto.staffUserId } };
     }
     if (dto.notes !== undefined) {
-      data.notes =
-        dto.notes === null ? null : (dto.notes as string).trim() || null;
+      data.notes = dto.notes === null ? null : String(dto.notes).trim() || null;
     }
 
     const row = await this.prisma.appointment.update({
@@ -214,7 +213,11 @@ export class AppointmentsService {
     return row;
   }
 
-  async remove(tenantId: string, id: string, ctx: AuditRequestContext): Promise<void> {
+  async remove(
+    tenantId: string,
+    id: string,
+    ctx: AuditRequestContext,
+  ): Promise<void> {
     const existing = await this.prisma.appointment.findFirst({
       where: { id, tenantId },
       select: { patientId: true },
@@ -249,9 +252,7 @@ export class AppointmentsService {
       where: {
         tenantId,
         patientId,
-        ...(excludeAppointmentId
-          ? { id: { not: excludeAppointmentId } }
-          : {}),
+        ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
         AND: [{ startsAt: { lt: endsAt } }, { endsAt: { gt: startsAt } }],
       },
     });
