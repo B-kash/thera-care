@@ -81,4 +81,4 @@ Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-lo
 
 ### Mobile / responsive (FR-12 smoke)
 
-Narrow viewport (~375px): **menu** opens drawer; **no horizontal scroll** for primary chrome. Spot-check **login**, **dashboard**, **patients** (list + detail), **appointments** (list + calendar), **treatment notes**, **exercise plans**, **progress** — forms stack; wide tables scroll inside bordered region. **iOS Safari + Chrome Android** if you ship beyond desktop.
+Narrow viewport (~375px): **menu** opens drawer; **no horizontal scroll** for primary chrome. Spot-check **login**, **dashboard**, **patients** (list + detail), **appointments** (list + calendar), **treatment notes**, **exercise plans**, **progress** — forms stack; wide tables scroll inside bordered region. **Calendar** week/month may scroll horizontally inside its card on very narrow widths. **Safe-area**: shell and login add bottom inset padding for notched devices. **Touch**: shared inputs use `min-h-11` + `touch-manipulation` on small screens; primary actions in `PageHeader` stretch full width until `sm`. **iOS Safari + Chrome Android** if you ship beyond desktop.

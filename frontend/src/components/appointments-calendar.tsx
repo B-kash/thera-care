@@ -126,14 +126,15 @@ export function AppointmentsCalendar({ patientIdFilter, calMode }: Props) {
       {loading ? (
         <p className="text-sm text-foreground/60">Loading calendar…</p>
       ) : null}
-      <div className="rounded-lg border border-app-border bg-app-elevated p-2">
+      <div className="-mx-4 touch-pan-x overflow-x-auto overscroll-x-contain sm:mx-0">
+        <div className="min-w-[min(100%,36rem)] rounded-lg border border-app-border bg-app-elevated p-2 sm:min-w-0">
         <Calendar
           localizer={calendarLocalizer}
           culture="en-US"
           events={events}
           startAccessor="start"
           endAccessor="end"
-          style={{ minHeight: 560 }}
+          style={{ minHeight: "clamp(22rem, 58dvh, 36rem)" }}
           views={[Views.MONTH, Views.WEEK]}
           view={rbcView}
           date={cursor}
@@ -146,6 +147,7 @@ export function AppointmentsCalendar({ patientIdFilter, calMode }: Props) {
             router.push(`/appointments/${e.id}`);
           }}
         />
+        </div>
       </div>
       <p className="text-xs text-foreground/60">
         Month loads appointments that start in that month. Click an event for
