@@ -16,6 +16,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") ?? "/dashboard";
+  const passwordJustReset = searchParams.get("reset") === "1";
 
   const allowRegister = useMemo(() => isPublicRegisterUiAllowed(), []);
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -78,6 +79,12 @@ export function LoginForm() {
       <p className="mt-1 text-sm text-foreground/70">
         {mode === "login" ? "Sign in to continue" : "Create your account"}
       </p>
+
+      {passwordJustReset && mode === "login" ? (
+        <Alert className="mt-4">
+          Password updated. Sign in with your new password.
+        </Alert>
+      ) : null}
 
       {allowRegister ? (
         <div className="mt-6 flex gap-1 rounded-lg border border-app-border/60 bg-app-muted/90 p-1">
@@ -184,6 +191,24 @@ export function LoginForm() {
               : "Create account"}
         </Button>
       </form>
+
+      {mode === "login" ? (
+        <p className="mt-4 text-center text-xs text-foreground/60">
+          <Link
+            href="/login/forgot-password"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Forgot password?
+          </Link>
+          <span className="mx-1.5 text-foreground/40">·</span>
+          <Link
+            href="/login/magic-link"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Email me a sign-in link
+          </Link>
+        </p>
+      ) : null}
 
       <p className="mt-6 text-center text-xs text-foreground/55">
         <Link

@@ -79,6 +79,17 @@ On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those tw
 
 Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-logs` (supports `entityType`, `actorUserId`, `action`, `skip`, `take`). See [docs/AUDIT_LOGS.md](docs/AUDIT_LOGS.md) for retention notes.
 
+### Password reset & magic-link sign-in (FR-16)
+
+- **Forgot password:** `/login/forgot-password` → `POST /auth/password-reset/request` (optional **`tenantSlug`**, default clinic `default`) → email contains a link to `/login/reset-password?token=…` → `POST /auth/password-reset/confirm`.
+- **Magic link:** `/login/magic-link` → `POST /auth/magic-link/request` (optional **`tenantSlug`**) → email link to `/login/magic?token=…` → `POST /auth/magic-link/consume` (sets the same httpOnly session cookie as password login).
+
+**Email delivery:** default `AUTH_EMAIL_MODE=log` logs the full message (including links) to the Nest logger—fine for local dev. For production set `AUTH_EMAIL_MODE=smtp` and configure `SMTP_*` plus `SMTP_FROM`. **TTL:** `PASSWORD_RESET_TTL_MINUTES` (default 60), `MAGIC_LINK_TTL_MINUTES` (default 15).
+
+**Links** are built from **`FRONTEND_ORIGIN`** so they must match where the browser loads the Next app (e.g. `http://localhost:3000`).
+
+**Enumeration trade-off:** forgot-password and magic-link **request** endpoints always return `{ ok: true }` whether or not the email exists, so clients cannot distinguish unknown addresses from known ones. Response timing is not fully constant; treat as best-effort UX, not a cryptographic guarantee.
+
 ### Users (admins)
 
 **ADMIN** sees **Users** in the sidebar (`GET` / `POST` / `PATCH /users/:id`). User create/update and role or active changes emit **USER** rows on the audit trail.

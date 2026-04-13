@@ -1,6 +1,7 @@
 "use client";
 
 import { resolveApiUrl } from "@/lib/api";
+import { defaultTenantSlugBody } from "@/lib/default-tenant-slug";
 import {
   createContext,
   useCallback,
@@ -61,12 +62,6 @@ async function parseErrorResponse(res: Response): Promise<string> {
     /* ignore */
   }
   return text || `Request failed (${res.status})`;
-}
-
-function defaultTenantSlugBody(): { tenantSlug?: string } {
-  const fromEnv = process.env.NEXT_PUBLIC_DEFAULT_TENANT_SLUG?.trim();
-  if (fromEnv) return { tenantSlug: fromEnv };
-  return {};
 }
 
 async function fetchMe(): Promise<AuthUser> {
