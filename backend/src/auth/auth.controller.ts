@@ -13,9 +13,12 @@ import type { Request, Response } from 'express';
 import { ACCESS_TOKEN_COOKIE } from './auth.constants';
 import { AuthService } from './auth.service';
 import { CompleteLogin2faDto } from './dto/complete-login-2fa.dto';
+import { ConsumeMagicLinkDto } from './dto/consume-magic-link.dto';
 import { Disable2faDto } from './dto/disable-2fa.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RequestEmailDto } from './dto/request-email.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { TotpSetupConfirmDto } from './dto/totp-setup-confirm.dto';
 import type { RequestUser } from './strategies/jwt.strategy';
 
@@ -71,6 +74,42 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.completeLoginWith2fa(dto);
+    setAccessTokenCookie(res, result.accessToken);
+    return result;
+  }
+
+  @Post('password-reset/request')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async requestPasswordReset(@Body() dto: RequestEmailDto) {
+    await this.authService.requestPasswordReset(dto.email, dto.tenantSlug);
+    return { ok: true };
+  }
+
+  @Post('password-reset/confirm')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async confirmPasswordReset(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPasswordWithToken(dto.token, dto.password);
+    return { ok: true };
+  }
+
+  @Post('magic-link/request')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async requestMagicLink(@Body() dto: RequestEmailDto) {
+    await this.authService.requestMagicLink(dto.email, dto.tenantSlug);
+    return { ok: true };
+  }
+
+  @Post('magic-link/consume')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  async consumeMagicLink(
+    @Body() dto: ConsumeMagicLinkDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.consumeMagicLinkToken(dto.token);
     setAccessTokenCookie(res, result.accessToken);
     return result;
   }

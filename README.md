@@ -85,6 +85,25 @@ Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-lo
 - **Admin recovery:** With an **ADMIN** session, `POST /users/:userId/two-factor/clear` clears another user’s TOTP and backup codes in the same clinic so they can re-enroll (does not change their password). Self-service **turn off 2FA** still requires password plus a valid code on **Security**.
 - **Configuration:** `backend/.env.example` documents `TOTP_ENCRYPTION_KEY` (recommended in production), `PRE_2FA_JWT_SECRET`, and optional `REQUIRE_2FA_FOR_ADMIN` (read the bootstrap note there before enabling).
 
+### Password reset & magic-link sign-in (FR-16)
+
+- **Forgot password:** `/login/forgot-password` → `POST /auth/password-reset/request` (optional **`tenantSlug`**, default clinic `default`) → email contains a link to `/login/reset-password?token=…` → `POST /auth/password-reset/confirm`.
+- **Magic link:** `/login/magic-link` → `POST /auth/magic-link/request` (optional **`tenantSlug`**) → email link to `/login/magic?token=…` → `POST /auth/magic-link/consume` (sets the same httpOnly session cookie as password login).
+
+**Email delivery:** default `AUTH_EMAIL_MODE=log` logs the full message (including links) to the Nest logger—fine for local dev. For production set `AUTH_EMAIL_MODE=smtp` and configure `SMTP_*` plus `SMTP_FROM`. **TTL:** `PASSWORD_RESET_TTL_MINUTES` (default 60), `MAGIC_LINK_TTL_MINUTES` (default 15).
+
+**Links** are built from **`FRONTEND_ORIGIN`** so they must match where the browser loads the Next app (e.g. `http://localhost:3000`).
+
+**Enumeration trade-off:** forgot-password and magic-link **request** endpoints always return `{ ok: true }` whether or not the email exists, so clients cannot distinguish unknown addresses from known ones. Response timing is not fully constant; treat as best-effort UX, not a cryptographic guarantee.
+
+### Users (admins)
+
+**ADMIN** sees **Users** in the sidebar (`GET` / `POST` / `PATCH /users/:id`). User create/update and role or active changes emit **USER** rows on the audit trail.
+
+For production-style lockdown, set **`ALLOW_PUBLIC_REGISTER=false`** on the API so `POST /auth/register` returns **403**. Set **`NEXT_PUBLIC_ALLOW_PUBLIC_REGISTER=false`** on the Next.js build so the login screen hides **Register** (same default rule as the API: unset allows signup in non-production only).
+
+**First administrator:** with public registration on, sign up once, then promote that user in your clinic (SQL or admin tooling) — e.g. `UPDATE users SET role = 'ADMIN' WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'default') AND lower(email) = lower('you@example.com');`. With registration off, insert the first user via SQL or a one-off script, then manage everyone else from **Users**.
+
 ### Progressive Web App (FR-13)
 
 - **Manifest & icons:** `frontend/src/app/manifest.ts` and `frontend/public/icons/*.png` (replace PNGs when branding changes).

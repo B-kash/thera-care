@@ -7,8 +7,6 @@ import type { UserRole } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ACCESS_TOKEN_COOKIE } from '../auth.constants';
 
-const USER_ROLES: readonly string[] = ['ADMIN', 'THERAPIST', 'STAFF'];
-
 export type AccessTokenPayload = {
   sub: string;
   email: string;
@@ -28,13 +26,6 @@ function cookieExtractor(req: Request): string | null {
   return typeof raw === 'string' && raw.length > 0 ? raw : null;
 }
 
-function parseRole(value: unknown): UserRole {
-  if (typeof value === 'string' && USER_ROLES.includes(value)) {
-    return value as UserRole;
-  }
-  return 'THERAPIST';
-}
-
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
@@ -52,21 +43,24 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: AccessTokenPayload): Promise<RequestUser> {
-    const base = {
-      userId: payload.sub,
-      email: payload.email,
-      role: parseRole(payload.role),
-    };
-    if (typeof payload.tenantId === 'string' && payload.tenantId.length > 0) {
-      return { ...base, tenantId: payload.tenantId };
-    }
     const row = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { tenantId: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        tenantId: true,
+        active: true,
+      },
     });
-    if (!row) {
+    if (!row || !row.active) {
       throw new UnauthorizedException();
     }
-    return { ...base, tenantId: row.tenantId };
+    return {
+      userId: row.id,
+      email: row.email,
+      role: row.role,
+      tenantId: row.tenantId,
+    };
   }
 }

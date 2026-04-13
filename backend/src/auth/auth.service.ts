@@ -6,15 +6,22 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import type { UserRole } from '../generated/prisma/client';
+import {
+  EmailAuthTokenPurpose,
+  type UserRole,
+} from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CompleteLogin2faDto } from './dto/complete-login-2fa.dto';
 import { Disable2faDto } from './dto/disable-2fa.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { TotpSetupConfirmDto } from './dto/totp-setup-confirm.dto';
+import { EmailAuthTokenService } from './email-auth-token.service';
+import { MailerService } from './mailer.service';
+import { isPublicRegisterAllowed } from './public-register.util';
 import { AccessTokenPayload } from './strategies/jwt.strategy';
 import { TwoFactorService } from './two-factor.service';
 
@@ -30,6 +37,20 @@ type Pre2faPayload = {
   tenantId: string;
 };
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function passwordResetTtlMs(): number {
+  const m = Number(process.env.PASSWORD_RESET_TTL_MINUTES);
+  return (Number.isFinite(m) && m > 0 ? m : 60) * 60_000;
+}
+
+function magicLinkTtlMs(): number {
+  const m = Number(process.env.MAGIC_LINK_TTL_MINUTES);
+  return (Number.isFinite(m) && m > 0 ? m : 15) * 60_000;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -37,12 +58,26 @@ export class AuthService {
     private readonly jwt: JwtService,
     @Inject('PRE_2FA_JWT') private readonly pre2faJwt: JwtService,
     private readonly twoFactor: TwoFactorService,
+    private readonly config: ConfigService,
+    private readonly tokens: EmailAuthTokenService,
+    private readonly mailer: MailerService,
   ) {}
 
+  private appOrigin(): string {
+    return (
+      this.config.get<string>('FRONTEND_ORIGIN') ?? 'http://localhost:3000'
+    ).replace(/\/$/, '');
+  }
+
   async register(dto: RegisterDto): Promise<{ accessToken: string }> {
+    if (!isPublicRegisterAllowed()) {
+      throw new ForbiddenException('Public registration is disabled');
+    }
+
     const tenant = await this.resolveTenant(dto.tenantSlug);
+    const email = normalizeEmail(dto.email);
     const existing = await this.prisma.user.findFirst({
-      where: { email: dto.email, tenantId: tenant.id },
+      where: { email, tenantId: tenant.id },
     });
     if (existing) {
       throw new ConflictException(
@@ -54,9 +89,9 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         tenantId: tenant.id,
-        email: dto.email,
+        email,
         passwordHash,
-        displayName: dto.displayName,
+        displayName: dto.displayName?.trim() || null,
       },
     });
 
@@ -72,18 +107,14 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<LoginResult> {
     const tenant = await this.resolveTenant(dto.tenantSlug);
+    const email = normalizeEmail(dto.email);
     const user = await this.prisma.user.findFirst({
-      where: { email: dto.email, tenantId: tenant.id },
-      select: {
-        id: true,
-        email: true,
-        passwordHash: true,
-        role: true,
-        tenantId: true,
-        totpEnabled: true,
-      },
+      where: { email, tenantId: tenant.id },
     });
     if (!user?.passwordHash) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+    if (!user.active) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -143,9 +174,14 @@ export class AuthService {
         role: true,
         tenantId: true,
         totpEnabled: true,
+        active: true,
       },
     });
-    if (!user?.totpEnabled || user.tenantId !== payload.tenantId) {
+    if (
+      !user?.totpEnabled ||
+      !user.active ||
+      user.tenantId !== payload.tenantId
+    ) {
       throw new UnauthorizedException();
     }
     const verified = await this.twoFactor.verifyTotpOrBackup(user.id, dto.code);
@@ -170,6 +206,7 @@ export class AuthService {
         email: true,
         displayName: true,
         role: true,
+        active: true,
         tenantId: true,
         createdAt: true,
         updatedAt: true,
@@ -179,6 +216,9 @@ export class AuthService {
       },
     });
     if (!user) {
+      throw new UnauthorizedException();
+    }
+    if (!user.active) {
       throw new UnauthorizedException();
     }
     const { totpPendingSecretEnc, ...rest } = user;
@@ -231,6 +271,120 @@ export class AuthService {
     }
     await this.twoFactor.clearTotpAndBackupCodes(userId);
     return { ok: true as const };
+  }
+
+  /**
+   * Always succeeds from the caller’s perspective (uniform JSON) to avoid email enumeration.
+   */
+  async requestPasswordReset(
+    emailRaw: string,
+    tenantSlug?: string,
+  ): Promise<void> {
+    const tenant = await this.resolveTenant(tenantSlug);
+    const email = normalizeEmail(emailRaw);
+    const user = await this.prisma.user.findFirst({
+      where: { email, tenantId: tenant.id },
+      select: { id: true, active: true, passwordHash: true },
+    });
+    if (!user?.active || !user.passwordHash) {
+      return;
+    }
+
+    const raw = await this.tokens.issue(
+      user.id,
+      EmailAuthTokenPurpose.PASSWORD_RESET,
+      passwordResetTtlMs(),
+    );
+    const link = `${this.appOrigin()}/login/reset-password?token=${encodeURIComponent(raw)}`;
+    await this.mailer.send({
+      to: email,
+      subject: 'Reset your Thera Care password',
+      text: `We received a request to reset the password for ${email}.\n\nOpen this link (valid once, expires soon):\n${link}\n\nIf you did not ask for this, you can ignore this email.`,
+    });
+  }
+
+  async resetPasswordWithToken(
+    rawToken: string,
+    newPassword: string,
+  ): Promise<void> {
+    const consumed = await this.tokens.consume(
+      rawToken,
+      EmailAuthTokenPurpose.PASSWORD_RESET,
+    );
+    if (!consumed) {
+      throw new BadRequestException(
+        'This reset link is invalid or has expired.',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: consumed.userId },
+      data: { passwordHash },
+    });
+  }
+
+  async requestMagicLink(
+    emailRaw: string,
+    tenantSlug?: string,
+  ): Promise<void> {
+    const tenant = await this.resolveTenant(tenantSlug);
+    const email = normalizeEmail(emailRaw);
+    const user = await this.prisma.user.findFirst({
+      where: { email, tenantId: tenant.id },
+      select: { id: true, active: true },
+    });
+    if (!user?.active) {
+      return;
+    }
+
+    const raw = await this.tokens.issue(
+      user.id,
+      EmailAuthTokenPurpose.MAGIC_LINK,
+      magicLinkTtlMs(),
+    );
+    const link = `${this.appOrigin()}/login/magic?token=${encodeURIComponent(raw)}`;
+    await this.mailer.send({
+      to: email,
+      subject: 'Sign in to Thera Care',
+      text: `Use this one-time link to sign in (expires soon):\n${link}\n\nIf you did not ask for this, you can ignore this email.`,
+    });
+  }
+
+  async consumeMagicLinkToken(rawToken: string): Promise<{ accessToken: string }> {
+    const consumed = await this.tokens.consume(
+      rawToken,
+      EmailAuthTokenPurpose.MAGIC_LINK,
+    );
+    if (!consumed) {
+      throw new BadRequestException(
+        'This sign-in link is invalid or has expired.',
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: consumed.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        active: true,
+        tenantId: true,
+      },
+    });
+    if (!user?.active) {
+      throw new BadRequestException(
+        'This sign-in link is invalid or has expired.',
+      );
+    }
+
+    const accessToken = await this.signAccessToken(
+      user.id,
+      user.email,
+      user.role,
+      user.tenantId,
+    );
+    return { accessToken };
   }
 
   private async resolveTenant(slug: string | undefined) {

@@ -2,13 +2,20 @@ jest.mock('./two-factor.service', () => ({
   TwoFactorService: class TwoFactorService {},
 }));
 
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import {
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import * as bcrypt from 'bcrypt';
 import { UserRole } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { EmailAuthTokenService } from './email-auth-token.service';
+import { MailerService } from './mailer.service';
 import { TwoFactorService } from './two-factor.service';
 
 describe('AuthService', () => {
@@ -19,6 +26,7 @@ describe('AuthService', () => {
       findFirst: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
   };
   const jwt = { signAsync: jest.fn().mockResolvedValue('signed-jwt') };
@@ -33,6 +41,22 @@ describe('AuthService', () => {
     cancelEnrollment: jest.fn(),
     clearTotpAndBackupCodes: jest.fn(),
   };
+  const config = {
+    get: jest.fn((key: string) => {
+      if (key === 'FRONTEND_ORIGIN') return 'http://localhost:3000';
+      return undefined;
+    }),
+  };
+  const tokens = {
+    issue: jest.fn().mockResolvedValue('raw-one-time-token'),
+    consume: jest.fn(),
+  };
+  const mailer = { send: jest.fn().mockResolvedValue(undefined) };
+
+  afterEach(() => {
+    delete process.env.ALLOW_PUBLIC_REGISTER;
+    delete process.env.REQUIRE_2FA_FOR_ADMIN;
+  });
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -48,6 +72,9 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwt },
         { provide: 'PRE_2FA_JWT', useValue: pre2faJwt },
         { provide: TwoFactorService, useValue: twoFactor },
+        { provide: ConfigService, useValue: config },
+        { provide: EmailAuthTokenService, useValue: tokens },
+        { provide: MailerService, useValue: mailer },
       ],
     }).compile();
 
@@ -79,6 +106,14 @@ describe('AuthService', () => {
     });
   });
 
+  it('register throws when public registration is disabled', async () => {
+    process.env.ALLOW_PUBLIC_REGISTER = 'false';
+
+    await expect(
+      service.register({ email: 'a@b.com', password: 'password1' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('register throws when email exists', async () => {
     prisma.user.findFirst.mockResolvedValue({ id: 'x' });
 
@@ -95,6 +130,21 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('login throws when user is inactive', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'u1',
+      email: 'a@b.com',
+      passwordHash: 'hash',
+      active: false,
+      tenantId: 'tid',
+      role: UserRole.THERAPIST,
+    });
+
+    await expect(
+      service.login({ email: 'a@b.com', password: 'any' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
   it('login returns preAuthToken when TOTP is enabled', async () => {
     const compareSpy = jest
       .spyOn(bcrypt, 'compare')
@@ -105,6 +155,7 @@ describe('AuthService', () => {
       passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
       role: UserRole.THERAPIST,
       tenantId: 'tid',
+      active: true,
       totpEnabled: true,
     });
 
@@ -121,5 +172,32 @@ describe('AuthService', () => {
     });
     expect(jwt.signAsync).not.toHaveBeenCalled();
     compareSpy.mockRestore();
+  });
+
+  it('requestPasswordReset sends mail when user exists with password', async () => {
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'u1',
+      active: true,
+      passwordHash: 'x',
+    });
+
+    await service.requestPasswordReset('A@B.com');
+
+    expect(tokens.issue).toHaveBeenCalled();
+    expect(mailer.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'a@b.com',
+        subject: expect.stringContaining('password') as unknown,
+      }),
+    );
+  });
+
+  it('requestPasswordReset skips mail when user unknown', async () => {
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await service.requestPasswordReset('nobody@b.com');
+
+    expect(tokens.issue).not.toHaveBeenCalled();
+    expect(mailer.send).not.toHaveBeenCalled();
   });
 });
