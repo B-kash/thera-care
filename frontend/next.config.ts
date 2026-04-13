@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Helps some deps ship compatible JSX; also quiets "outdated JSX transform" when source is compiled through Next.
   transpilePackages: ["react-big-calendar"],
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [{ key: "Cache-Control", value: "no-store, max-age=0" }],
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

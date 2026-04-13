@@ -84,6 +84,38 @@ On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those tw
 
 Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-logs` (supports `entityType`, `actorUserId`, `action`, `skip`, `take`). See [docs/AUDIT_LOGS.md](docs/AUDIT_LOGS.md) for retention notes.
 
+### Two-factor authentication (TOTP)
+
+- **UI:** Use **Security** in the sidebar to enroll (authenticator app + backup codes shown once). When 2FA is on, **login** asks for an authenticator or backup code after the password.
+- **Admin recovery:** With an **ADMIN** session, `POST /users/:userId/two-factor/clear` clears another user’s TOTP and backup codes in the same clinic so they can re-enroll (does not change their password). Self-service **turn off 2FA** still requires password plus a valid code on **Security**.
+- **Configuration:** `backend/.env.example` documents `TOTP_ENCRYPTION_KEY` (recommended in production), `PRE_2FA_JWT_SECRET`, and optional `REQUIRE_2FA_FOR_ADMIN` (read the bootstrap note there before enabling).
+
+### Password reset & magic-link sign-in (FR-16)
+
+- **Forgot password:** `/login/forgot-password` → `POST /auth/password-reset/request` (optional **`tenantSlug`**, default clinic `default`) → email contains a link to `/login/reset-password?token=…` → `POST /auth/password-reset/confirm`.
+- **Magic link:** `/login/magic-link` → `POST /auth/magic-link/request` (optional **`tenantSlug`**) → email link to `/login/magic?token=…` → `POST /auth/magic-link/consume` (sets the same httpOnly session cookie as password login).
+
+**Email delivery:** default `AUTH_EMAIL_MODE=log` logs the full message (including links) to the Nest logger—fine for local dev. For production set `AUTH_EMAIL_MODE=smtp` and configure `SMTP_*` plus `SMTP_FROM`. **TTL:** `PASSWORD_RESET_TTL_MINUTES` (default 60), `MAGIC_LINK_TTL_MINUTES` (default 15).
+
+**Links** are built from **`FRONTEND_ORIGIN`** so they must match where the browser loads the Next app (e.g. `http://localhost:3000`).
+
+**Enumeration trade-off:** forgot-password and magic-link **request** endpoints always return `{ ok: true }` whether or not the email exists, so clients cannot distinguish unknown addresses from known ones. Response timing is not fully constant; treat as best-effort UX, not a cryptographic guarantee.
+
+### Users (admins)
+
+**ADMIN** sees **Users** in the sidebar (`GET` / `POST` / `PATCH /users/:id`). User create/update and role or active changes emit **USER** rows on the audit trail.
+
+For production-style lockdown, set **`ALLOW_PUBLIC_REGISTER=false`** on the API so `POST /auth/register` returns **403**. Set **`NEXT_PUBLIC_ALLOW_PUBLIC_REGISTER=false`** on the Next.js build so the login screen hides **Register** (same default rule as the API: unset allows signup in non-production only).
+
+**First administrator:** with public registration on, sign up once, then promote that user in your clinic (SQL or admin tooling) — e.g. `UPDATE users SET role = 'ADMIN' WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'default') AND lower(email) = lower('you@example.com');`. With registration off, insert the first user via SQL or a one-off script, then manage everyone else from **Users**.
+
+### Progressive Web App (FR-13)
+
+- **Manifest & icons:** `frontend/src/app/manifest.ts` and `frontend/public/icons/*.png` (replace PNGs when branding changes).
+- **Service worker:** `frontend/public/sw.js` — precaches `/offline` + icons; **HTML navigations** fall back to `/offline` when the network is down; **`/api/*` is never cached** (network-only, 503 JSON body when offline). Does **not** silently persist clinical writes offline.
+- **Registration:** production builds register automatically. For **local** testing with `next dev` / `next start`, set `NEXT_PUBLIC_ENABLE_SW=true` in `frontend/.env.local` (see `frontend/.env.example`). **Install / A2HS** needs **HTTPS** in real deployments (localhost is exempt in browsers).
+- **Privacy (FR-10 overlap):** the worker may hold the offline HTML shell and static icon responses in `CacheStorage`; it does not store API JSON for later replay.
+
 ### Mobile / responsive (FR-12 smoke)
 
-Narrow viewport (~375px): **menu** opens drawer; **no horizontal scroll** for primary chrome. Spot-check **login**, **dashboard**, **patients** (list + detail), **appointments** (list + calendar), **treatment notes**, **exercise plans**, **progress** — forms stack; wide tables scroll inside bordered region. **iOS Safari + Chrome Android** if you ship beyond desktop.
+Narrow viewport (~375px): **menu** opens drawer; **no horizontal scroll** for primary chrome. Spot-check **login**, **dashboard**, **patients** (list + detail), **appointments** (list + calendar), **treatment notes**, **exercise plans**, **progress** — forms stack; wide tables scroll inside bordered region. **Calendar** week/month may scroll horizontally inside its card on very narrow widths. **Safe-area**: shell and login add bottom inset padding for notched devices. **Touch**: shared inputs use `min-h-11` + `touch-manipulation` on small screens; primary actions in `PageHeader` stretch full width until `sm`. **iOS Safari + Chrome Android** if you ship beyond desktop.

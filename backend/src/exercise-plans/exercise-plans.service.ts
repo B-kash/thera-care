@@ -84,12 +84,14 @@ export class ExercisePlansService {
   async create(
     dto: CreateExercisePlanDto,
     authorUserId: string,
+    tenantId: string,
     ctx: AuditRequestContext,
   ): Promise<ExercisePlanDetailDto> {
-    await this.ensurePatientExists(dto.patientId);
+    await this.ensurePatientExists(tenantId, dto.patientId);
 
     const row = await this.prisma.exercisePlan.create({
       data: {
+        tenantId,
         patientId: dto.patientId,
         authorUserId,
         title: dto.title.trim(),
@@ -108,19 +110,24 @@ export class ExercisePlansService {
   }
 
   async findAllForPatient(
+    tenantId: string,
     query: ListExercisePlansQueryDto,
   ): Promise<ExercisePlanListDto[]> {
     return this.prisma.exercisePlan.findMany({
-      where: { patientId: query.patientId },
+      where: {
+        tenantId,
+        patientId: query.patientId,
+        patient: { tenantId },
+      },
       orderBy: { updatedAt: 'desc' },
       take: 100,
       select: planListSelect,
     });
   }
 
-  async findOne(id: string): Promise<ExercisePlanDetailDto> {
-    const row = await this.prisma.exercisePlan.findUnique({
-      where: { id },
+  async findOne(tenantId: string, id: string): Promise<ExercisePlanDetailDto> {
+    const row = await this.prisma.exercisePlan.findFirst({
+      where: { id, tenantId },
       select: planDetailSelect,
     });
     if (!row) {
@@ -130,12 +137,13 @@ export class ExercisePlansService {
   }
 
   async update(
+    tenantId: string,
     id: string,
     dto: UpdateExercisePlanDto,
     ctx: AuditRequestContext,
   ): Promise<ExercisePlanDetailDto> {
-    const existing = await this.prisma.exercisePlan.findUnique({
-      where: { id },
+    const existing = await this.prisma.exercisePlan.findFirst({
+      where: { id, tenantId },
     });
     if (!existing) {
       throw new NotFoundException('Exercise plan not found');
@@ -153,7 +161,7 @@ export class ExercisePlansService {
     }
 
     const row = await this.prisma.exercisePlan.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       select: planDetailSelect,
     });
@@ -167,15 +175,15 @@ export class ExercisePlansService {
     return row;
   }
 
-  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
-    const existing = await this.prisma.exercisePlan.findUnique({
-      where: { id },
+  async remove(tenantId: string, id: string, ctx: AuditRequestContext): Promise<void> {
+    const existing = await this.prisma.exercisePlan.findFirst({
+      where: { id, tenantId },
       select: { patientId: true },
     });
     if (!existing) {
       throw new NotFoundException('Exercise plan not found');
     }
-    await this.prisma.exercisePlan.delete({ where: { id } });
+    await this.prisma.exercisePlan.delete({ where: { id, tenantId } });
     await this.audit.logEvent({
       context: ctx,
       action: AuditAction.DELETE,
@@ -186,18 +194,20 @@ export class ExercisePlansService {
   }
 
   async addItem(
+    tenantId: string,
     planId: string,
     dto: CreateExerciseItemDto,
     ctx: AuditRequestContext,
   ): Promise<ExerciseItemDto> {
-    await this.ensurePlanExists(planId);
+    await this.ensurePlanExists(tenantId, planId);
 
     const sortOrder =
       dto.sortOrder ??
-      (await this.nextItemSortOrder(planId));
+      (await this.nextItemSortOrder(tenantId, planId));
 
     const row = await this.prisma.exerciseItem.create({
       data: {
+        tenantId,
         exercisePlanId: planId,
         name: dto.name.trim(),
         instructions: dto.instructions?.trim()
@@ -223,12 +233,13 @@ export class ExercisePlansService {
   }
 
   async updateItem(
+    tenantId: string,
     planId: string,
     itemId: string,
     dto: UpdateExerciseItemDto,
     ctx: AuditRequestContext,
   ): Promise<ExerciseItemDto> {
-    await this.ensureItemBelongsToPlan(planId, itemId);
+    await this.ensureItemBelongsToPlan(tenantId, planId, itemId);
 
     const data: Prisma.ExerciseItemUpdateInput = {};
     if (dto.name !== undefined) {
@@ -251,7 +262,7 @@ export class ExercisePlansService {
     }
 
     const row = await this.prisma.exerciseItem.update({
-      where: { id: itemId },
+      where: { id: itemId, tenantId },
       data,
       select: itemSelect,
     });
@@ -266,12 +277,13 @@ export class ExercisePlansService {
   }
 
   async removeItem(
+    tenantId: string,
     planId: string,
     itemId: string,
     ctx: AuditRequestContext,
   ): Promise<void> {
-    await this.ensureItemBelongsToPlan(planId, itemId);
-    await this.prisma.exerciseItem.delete({ where: { id: itemId } });
+    await this.ensureItemBelongsToPlan(tenantId, planId, itemId);
+    await this.prisma.exerciseItem.delete({ where: { id: itemId, tenantId } });
     await this.audit.logEvent({
       context: ctx,
       action: AuditAction.DELETE,
@@ -281,35 +293,47 @@ export class ExercisePlansService {
     });
   }
 
-  private async ensurePatientExists(patientId: string): Promise<void> {
-    const n = await this.prisma.patient.count({ where: { id: patientId } });
+  private async ensurePatientExists(
+    tenantId: string,
+    patientId: string,
+  ): Promise<void> {
+    const n = await this.prisma.patient.count({ where: { id: patientId, tenantId } });
     if (n === 0) {
       throw new NotFoundException('Patient not found');
     }
   }
 
-  private async ensurePlanExists(planId: string): Promise<void> {
-    const n = await this.prisma.exercisePlan.count({ where: { id: planId } });
+  private async ensurePlanExists(
+    tenantId: string,
+    planId: string,
+  ): Promise<void> {
+    const n = await this.prisma.exercisePlan.count({
+      where: { id: planId, tenantId },
+    });
     if (n === 0) {
       throw new NotFoundException('Exercise plan not found');
     }
   }
 
   private async ensureItemBelongsToPlan(
+    tenantId: string,
     planId: string,
     itemId: string,
   ): Promise<void> {
-    const item = await this.prisma.exerciseItem.findUnique({
-      where: { id: itemId },
+    const item = await this.prisma.exerciseItem.findFirst({
+      where: { id: itemId, tenantId },
     });
     if (!item || item.exercisePlanId !== planId) {
       throw new NotFoundException('Exercise item not found');
     }
   }
 
-  private async nextItemSortOrder(planId: string): Promise<number> {
+  private async nextItemSortOrder(
+    tenantId: string,
+    planId: string,
+  ): Promise<number> {
     const agg = await this.prisma.exerciseItem.aggregate({
-      where: { exercisePlanId: planId },
+      where: { exercisePlanId: planId, tenantId },
       _max: { sortOrder: true },
     });
     return (agg._max.sortOrder ?? -1) + 1;

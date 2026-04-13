@@ -14,6 +14,7 @@ const coreNavItems = [
   { href: "/treatment-notes", label: "Treatment notes" },
   { href: "/exercise-plans", label: "Exercise plans" },
   { href: "/progress", label: "Progress" },
+  { href: "/settings/security", label: "Security" },
 ] as const;
 
 function MenuIcon({ open }: { open: boolean }) {
@@ -47,7 +48,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = useMemo(() => {
     const admin = isAdminRole(user?.role)
-      ? [{ href: "/audit-logs", label: "Audit logs" } as const]
+      ? ([
+          { href: "/users", label: "Users" } as const,
+          { href: "/audit-logs", label: "Audit logs" } as const,
+        ] as const)
       : [];
     return [...coreNavItems, ...admin];
   }, [user?.role]);
@@ -136,10 +140,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <span className="truncate">Thera Care</span>
           </div>
-          <span className="hidden md:inline">Thera Care</span>
+          <div className="hidden min-w-0 flex-1 items-baseline gap-2 md:flex">
+            <span className="shrink-0">Thera Care</span>
+            {user?.tenant ? (
+              <span
+                className="truncate text-xs font-normal text-muted-foreground"
+                title={`Clinic: ${user.tenant.name} (${user.tenant.slug})`}
+              >
+                {user.tenant.name}
+              </span>
+            ) : null}
+          </div>
           <ThemeSwitcher />
         </header>
-        <main className="flex-1 px-4 py-6 sm:px-6 md:py-8">
+        <main className="flex-1 px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 md:py-8">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
       </div>

@@ -39,20 +39,27 @@ export class ProgressController {
     return this.progressService.create(
       dto,
       req.user.userId,
+      req.user.tenantId,
       auditContextFromRequest(req),
     );
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findAllForPatient(@Query() query: ListProgressQueryDto) {
-    return this.progressService.findAllForPatient(query);
+  findAllForPatient(
+    @Query() query: ListProgressQueryDto,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.progressService.findAllForPatient(req.user.tenantId, query);
   }
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.progressService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.progressService.findOne(req.user.tenantId, id);
   }
 
   @Patch(':id')
@@ -63,6 +70,7 @@ export class ProgressController {
     @Req() req: Request & { user: RequestUser },
   ) {
     return this.progressService.update(
+      req.user.tenantId,
       id,
       dto,
       auditContextFromRequest(req),
@@ -76,6 +84,10 @@ export class ProgressController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request & { user: RequestUser },
   ) {
-    await this.progressService.remove(id, auditContextFromRequest(req));
+    await this.progressService.remove(
+      req.user.tenantId,
+      id,
+      auditContextFromRequest(req),
+    );
   }
 }

@@ -4,7 +4,12 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExercisePlansService } from './exercise-plans.service';
 
-const ctx = { actorUserId: 'u1', ip: null, userAgent: null };
+const ctx = {
+  tenantId: 't1',
+  actorUserId: 'u1',
+  ip: null as string | null,
+  userAgent: null as string | null,
+};
 
 describe('ExercisePlansService', () => {
   let service: ExercisePlansService;
@@ -14,6 +19,7 @@ describe('ExercisePlansService', () => {
     exercisePlan: {
       create: jest.fn(),
       findMany: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -21,6 +27,7 @@ describe('ExercisePlansService', () => {
     },
     exerciseItem: {
       create: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -45,7 +52,7 @@ describe('ExercisePlansService', () => {
     prisma.patient.count.mockResolvedValue(0);
 
     await expect(
-      service.create({ patientId: 'p1', title: 'Plan A' }, 'u1', ctx),
+      service.create({ patientId: 'p1', title: 'Plan A' }, 'u1', 't1', ctx),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
