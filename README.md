@@ -79,6 +79,13 @@ On **Windows**, `THERA_SPLIT_TERMINALS=1 npm run dev` automates opening those tw
 
 Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-logs` (supports `entityType`, `actorUserId`, `action`, `skip`, `take`). See [docs/AUDIT_LOGS.md](docs/AUDIT_LOGS.md) for retention notes.
 
+### Progressive Web App (FR-13)
+
+- **Manifest & icons:** `frontend/src/app/manifest.ts` and `frontend/public/icons/*.png` (replace PNGs when branding changes).
+- **Service worker:** `frontend/public/sw.js` — precaches `/offline` + icons; **HTML navigations** fall back to `/offline` when the network is down; **`/api/*` is never cached** (network-only, 503 JSON body when offline). Does **not** silently persist clinical writes offline.
+- **Registration:** production builds register automatically. For **local** testing with `next dev` / `next start`, set `NEXT_PUBLIC_ENABLE_SW=true` in `frontend/.env.local` (see `frontend/.env.example`). **Install / A2HS** needs **HTTPS** in real deployments (localhost is exempt in browsers).
+- **Privacy (FR-10 overlap):** the worker may hold the offline HTML shell and static icon responses in `CacheStorage`; it does not store API JSON for later replay.
+
 ### Mobile / responsive (FR-12 smoke)
 
 Narrow viewport (~375px): **menu** opens drawer; **no horizontal scroll** for primary chrome. Spot-check **login**, **dashboard**, **patients** (list + detail), **appointments** (list + calendar), **treatment notes**, **exercise plans**, **progress** — forms stack; wide tables scroll inside bordered region. **iOS Safari + Chrome Android** if you ship beyond desktop.
