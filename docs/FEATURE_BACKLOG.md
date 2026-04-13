@@ -91,6 +91,7 @@ Do **not** start a lower item while a higher `[ ]` item remains unless user says
 ### FR-08 — Export CSV (patient analytics)
 
 - [ ] **Done when:** User can download **CSV** for a patient (or date range) combining progress + key demographics / visits (exact columns = product choice).
+- **Status:** No dedicated export endpoint or patient-detail download in repo yet (lists use `skip`/`take` only).
 - **Scope (suggested):** Backend `GET` or `POST` export endpoint (RBAC: same access as patient read); stream CSV; frontend download button on patient detail or dedicated “Exports” action; UTF-8, sensible filenames.
 - **Depends on:** FR-02 for “who may export”; FR-05 if export must be tenant-scoped.
 
@@ -116,6 +117,7 @@ Do **not** start a lower item while a higher `[ ]` item remains unless user says
 ### FR-11 — Cursor-based pagination
 
 - [ ] **Done when:** High-volume **list** APIs use **cursor pagination** (not `skip`/`offset`) with stable ordering; responses include **`nextCursor`** (or explicit “end”); clients can page forward reliably; at least **patients** + **appointments** lists covered (extend same pattern to other list endpoints as follow-up if needed).
+- **Status:** Current APIs use **offset** pagination (`skip` / `take` on patients, appointments, users, audit logs, etc.); Prisma `cursor` not used yet.
 - **Scope (suggested):** Shared contract: query `cursor` (opaque string), `limit` (capped max, e.g. 50); order by **deterministic** tie-breaker (`createdAt` + `id` or similar); Prisma `take` + `cursor` / seek method documented in code; Nest DTO validation + Swagger; **RBAC / tenant filters unchanged** (cursor encodes position only inside allowed set); frontend: **“Load more”** or infinite scroll using returned `nextCursor`; document cursor format (versioned if you change sort key).
 - **Out of scope (for this FR):** Full GraphQL relay spec; backward pagination unless trivial add-on; search-index pagination (Algolia etc.).
 - **Depends on:** FR-05 if lists must be **tenant-scoped** first (cursor + `tenantId` filter must align); else none.
@@ -125,7 +127,7 @@ Do **not** start a lower item while a higher `[ ]` item remains unless user says
 ### FR-12 — Mobile-friendly (responsive UX)
 
 - [x] **Done when:** Core flows are **usable on phone-width viewports** (≈320–428px): navigation, auth, dashboard shell, **patients**, **appointments**, **treatment notes**, **exercise plans**, **progress** — no horizontal scroll traps for primary actions; forms and tables have a **small-screen pattern** (stacked fields, scroll-x only where intentional, or card/list alternative).
-- **Scope (suggested):** Audit layout: **sidebar** → collapsible / drawer + menu affordance on narrow widths; **tables** → responsive column hide, stacked rows, or cards; **touch targets** ≥ ~44px where interactive; **viewport** + safe-area if needed; keyboard / `input` types for mobile; smoke checklist in `docs/` or README (“verify on iOS Safari + Chrome Android”); **installable PWA** (manifest, icons, SW) → **FR-13**.
+- **Scope (suggested):** Audit layout: **sidebar** → collapsible / drawer + menu affordance on narrow widths; **tables** → responsive column hide, stacked rows, or cards; **touch targets** ≥ ~44px where interactive; **viewport** + safe-area if needed; keyboard / `input` types for mobile; smoke checklist in `docs/` or README (“verify on iOS Safari + Chrome Android”); **installable PWA** (manifest, icons, SW) → **FR-13** (shipped).
 - **Out of scope (for this FR):** Native iOS/Android apps; offline-first; full redesign — goal is **adaptation**, not new brand.
 - **Depends on:** FR-06 helps (shared components + theming reduce duplicate responsive work); can ship incremental **before** FR-06 if you accept some one-off responsive CSS first.
 - **Shipped (2026-04-13):** `AppShell` mobile drawer + overlay; `viewport` + safe-area on shell/login; tighter main padding; `Button` / theme selects / nav / appointment tabs **≥44px** touch height on small screens; `PageHeader` stacks actions; `TableShell` full-bleed horizontal scroll on narrow; README smoke checklist.
@@ -134,21 +136,23 @@ Do **not** start a lower item while a higher `[ ]` item remains unless user says
 
 ### FR-13 — Progressive Web App (PWA)
 
-- [ ] **Done when:** App is **installable** from supported mobile/desktop browsers (Add to Home Screen / install prompt where applicable); **Web App Manifest** present with name, theme/background colors, display mode, start URL; **icons** (maskable + standard sizes); **service worker** registers without breaking auth/API flows; **offline** behavior defined (at minimum branded offline fallback page + cached static shell; **not** silent stale clinical writes).
+- [x] **Done when:** App is **installable** from supported mobile/desktop browsers (Add to Home Screen / install prompt where applicable); **Web App Manifest** present with name, theme/background colors, display mode, start URL; **icons** (maskable + standard sizes); **service worker** registers without breaking auth/API flows; **offline** behavior defined (at minimum branded offline fallback page + cached static shell; **not** silent stale clinical writes).
 - **Scope (suggested):** Next.js integration (`metadata` manifest link, icons in `public/`); SW strategy (e.g. Workbox or hand-rolled): precache app shell + static assets; network-first for `/api` or same-origin API routes; `scope` / `start_url` aligned with app base path; Lighthouse PWA checks pass at acceptable threshold; README: HTTPS requirement for prod, how to test install locally; update **FR-10** privacy copy if SW caches personal data (disclose briefly).
 - **Out of scope (for this FR):** Full **offline CRUD** for patients/notes; **Web Push** (tie to FR-09 if desired); native store packaging.
 - **Depends on:** FR-12 **recommended** (usable layout at install size); FR-01 cookie/session behavior must stay correct with SW fetch handling.
+- **Shipped (2026-04):** `src/app/manifest.ts` + `public/icons/*`; `public/sw.js` + `ServiceWorkerRegistration` (prod or `NEXT_PUBLIC_ENABLE_SW=true`); `/offline` page; README PWA section; `/api` network-only in SW — no offline clinical writes.
 
 ---
 
 ### FR-14 — DevOps / CI–CD best practices
 
-- [ ] **Done when:** Repo has **documented** CI–CD posture aligned with team workflow: **automated checks** on every PR (at minimum **lint + unit/build** for `backend/` and `frontend/`); **branch protection** expectations documented (who merges, required checks); **environment promotion** story (dev → staging → prod or equivalent) with **secrets** outside git; **database migrations** path defined for deploys (Prisma: order of migrate vs app start); **rollback** or “forward-fix only” call documented.
+- [x] **Done when:** Repo has **documented** CI–CD posture aligned with team workflow: **automated checks** on every PR (at minimum **lint + unit/build** for `backend/` and `frontend/`); **branch protection** expectations documented (who merges, required checks); **environment promotion** story (dev → staging → prod or equivalent) with **secrets** outside git; **database migrations** path defined for deploys (Prisma: order of migrate vs app start); **rollback** or “forward-fix only” call documented.
 - **Scope (suggested):** Pick CI (e.g. GitHub Actions): matrix or parallel jobs; cache `npm`; run Prisma **validate** / generate where useful; optional **Docker image** build for backend + frontend; add **`docs/DEVOPS.md`** (or extend README) mapping **local → CI → deploy** and naming conventions for branches/tags; optional **staging** deploy workflow (manual or on `main`).
 - **Reference (ideas, not product-specific):** [Databricks — CI/CD best practices (GCP)](https://docs.databricks.com/gcp/en/dev-tools/ci-cd/best-practices) — use for **principles** (small batches, repeatable pipelines, env parity, review gates). **Adapt** to NestJS + Next.js + PostgreSQL (this repo is **not** Databricks).
 - **Out of scope (for this FR):** Full SOC2 evidence pack; multi-cloud DR; replacing your hosting vendor’s native deploy if already sufficient.
 - **Depends on:** None hard; **FR-05** before prod multi-tenant if CI must inject tenant-aware config per env.
 - **Notes:** **Kubernetes**, **separate IaC repo**, cluster-level **observability / resilience / rollback** → **FR-18** (this FR = app-repo **CI** + release hygiene; **FR-18** = **where** workloads run).
+- **Shipped (2026-04):** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — path-filtered backend/frontend jobs, **`npx prisma generate`** before backend lint, aggregate **CI** job for branch protection; [docs/DEVOPS.md](DEVOPS.md); root **Husky** + **lint-staged** (lint on commit). Optional: `release` workflow + Docker smoke in CI (still listed in DEVOPS as next steps).
 
 ---
 
@@ -163,10 +167,11 @@ Do **not** start a lower item while a higher `[ ]` item remains unless user says
 
 ### FR-16 — Forgot password & magic-link login
 
-- [ ] **Done when:** User can request **password reset** via email (time-limited token, one-time use); user can sign in via **magic link** (signed token in email, short TTL); flows rate-limited; invalid/expired token shows safe UX; **no** user enumeration via timing/message if you adopt uniform responses (document tradeoff).
+- [x] **Done when:** User can request **password reset** via email (time-limited token, one-time use); user can sign in via **magic link** (signed token in email, short TTL); flows rate-limited; invalid/expired token shows safe UX; **no** user enumeration via timing/message if you adopt uniform responses (document tradeoff).
 - **Scope (suggested):** Store hashed reset/magic tokens + expiry in DB or signed JWT with jti denylist; Nest modules + DTOs; email send via **minimal provider** (SMTP, Resend, etc.) — can ship **before** full **FR-09** if scope is auth-only templates; frontend pages: forgot password, reset password, “email sent”, magic-link landing that sets session/cookie per **FR-01**; align with **FR-15** if only existing users may use magic link (no public register).
 - **Out of scope (for this FR):** SMS OTP; social OAuth logins.
 - **Depends on:** **FR-01** (session/cookie after link click); **FR-15** recommended so all users are known before magic-link rollout in prod.
+- **Shipped (2026-04):** `EmailAuthToken` + `EmailAuthTokenService` + `MailerService`; `POST /auth/password-reset/*`, `POST /auth/magic-link/*`; throttled; frontend `/login/forgot-password`, `/login/reset-password`, `/login/magic-link`, `/login/magic`; README + `backend/.env.example` (`AUTH_EMAIL_MODE`, TTLs). Enumeration: uniform `{ ok: true }` on request endpoints (documented).
 
 ---
 
@@ -183,6 +188,7 @@ Do **not** start a lower item while a higher `[ ]` item remains unless user says
 ### FR-18 — DevOps pipeline: IaC repo + Kubernetes (deploy, tag, observe, rollback)
 
 - [ ] **Done when:** **Separate repository** holds **IaC + Kubernetes manifests** (or Helm/Kustomize charts) for this product; **automated pipeline** builds **versioned container images**, deploys to **at least** dev + staging (prod optional same pattern); **image tagging** policy documented (**immutable tags**: Git SHA + semver or calendar version; never reuse `latest` for prod); **observability** baseline live (**logs** aggregation, **metrics**, **tracing** optional but preferred); **resilience / reliability** primitives in cluster (**probes**, **resources**, **replicas**, **PDB** / surge rules where applicable, **HPA** or documented scale path); **rollback** path documented and tested (e.g. Helm `rollback`, Argo CD sync to previous Git, or `kubectl rollout undo`) — **one-page runbook**; links **FR-14** app CI (build/test) to **image publish** + **deploy promotion**.
+- **Progress (in this repo, not full FR-18):** Example **Kustomize** manifests under [`infra/k8s/`](../infra/k8s/) (backend + frontend Deployments/Services, namespace) and **[`docs/KUBERNETES_RUNBOOK.md`](KUBERNETES_RUNBOOK.md)** (tagging, rollback, observability, health probes). **Still open:** dedicated **infra repo**, CI **image build/push**, live cluster wiring, secrets operator, and tested deploy/rollback on a real cluster.
 - **Scope (suggested):** Pick stack (examples): **Terraform/OpenTofu** or Pulumi for cloud + cluster add-ons; **GitHub Actions** / GitLab CI in **IaC repo** for plan/apply gates; **Kubernetes**: `Deployment`/`Service`/`Ingress` (or gateway API) for **backend** + **frontend** (or SSR separately); **Secrets** via sealed-secrets, external secrets operator, or cloud secret manager — **not** plaintext in git; **Network policies** if threat model needs; **DB**: managed Postgres + **FR-05** pooled URL in prod; **migrations**: job or init pattern (order vs app rollout documented). **Observability:** OpenTelemetry or vendor (Datadog/Grafana Cloud/CloudWatch) — dashboards for **latency, errors, saturation**; **alerting** on SLO-style signals (5xx rate, pod crash loop); **structured logs** correlation with `trace_id` where possible. **Reliability:** health/readiness endpoints wired; graceful shutdown; optional **multi-AZ** = cloud default + explicit in docs.
 - **Relationship to FR-14:** **FR-14** = application repo **CI** (lint, test, build). **FR-18** = **where it runs** (infra repo, cluster, release, SRE baseline). Both ship before treating prod as “real.”
 - **Out of scope (for this FR):** Multi-region active-active; custom service mesh day one; SOC2 audit evidence pack (can reference this work later).
@@ -201,6 +207,9 @@ Do **not** start a lower item while a higher `[ ]` item remains unless user says
 
 ## Changelog (optional)
 
-| Date       | FR   | Note                          |
-|------------|------|-------------------------------|
-| *(empty)* |      |                               |
+| Date       | FR        | Note                                                                 |
+|------------|-----------|----------------------------------------------------------------------|
+| 2026-04-14 | FR-13, FR-16 | Marked shipped: PWA shell + manifest/SW; password reset + magic link |
+| 2026-04-14 | FR-14    | Marked shipped: GitHub Actions CI, DEVOPS.md, Husky/lint-staged      |
+| 2026-04-14 | FR-11,08 | Clarified “not built yet” (offset lists; no CSV export)              |
+| 2026-04-14 | FR-18 | Documented in-repo K8s starter + runbook vs full separate-repo scope |

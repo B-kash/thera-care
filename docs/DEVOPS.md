@@ -7,7 +7,7 @@ This document describes how **continuous integration** and **releases** are expe
 - **Workflow:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 - **Triggers:** every `push` to `main` and every `pull_request`.
 - **Jobs:**
-  - **Backend:** `npm ci` → `prisma validate` → ESLint (no auto-fix; `CI=true` turns off `prettier/prettier` in ESLint so the job is stable across OS line endings) → Jest → Nest build (includes `prisma generate` via `prebuild`).
+  - **Backend:** `npm ci` → `prisma validate` → **`prisma generate`** (gitignored client; required before ESLint) → ESLint (`lint:ci`, `CI=true` turns off `prettier/prettier` inside ESLint for stable line endings) → Jest → Nest build (`prebuild` runs generate again — harmless).
   - **Frontend:** `npm ci` → ESLint → `next build`.
 
 Pull requests should stay green before merge. **Branch protection** (GitHub: *Settings → Branches → Branch protection rule* for `main`) should require this workflow (or a ruleset that includes it) as a **required status check**, plus at least one reviewer if your team policy demands it.
