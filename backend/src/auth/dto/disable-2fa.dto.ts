@@ -7,7 +7,7 @@ export class Disable2faDto {
   @MaxLength(256)
   password: string;
 
-  @Transform(({ value }) =>
+  @Transform(({ value }: { value: unknown }): unknown =>
     typeof value === 'string' ? value.replace(/\s+/g, '').toLowerCase() : value,
   )
   @IsString()

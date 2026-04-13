@@ -5,9 +5,12 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:db": "docker compose up -d --no-recreate",
-    "dev:multiplex": "concurrently -k -n web,api -c magenta,blue \"npm run dev --prefix frontend\" \"npm run start:dev --prefix backend\""
+    "dev:multiplex": "concurrently -k -n web,api -c magenta,blue \"npm run dev --prefix frontend\" \"npm run start:dev --prefix backend\"",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0"
+    "concurrently": "^9.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.1"
   }
 }

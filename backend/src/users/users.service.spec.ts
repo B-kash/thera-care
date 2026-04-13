@@ -50,11 +50,7 @@ describe('UsersService', () => {
     prisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.update(
-        'missing-id',
-        { displayName: 'x' },
-        ctx,
-      ),
+      service.update('missing-id', { displayName: 'x' }, ctx),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

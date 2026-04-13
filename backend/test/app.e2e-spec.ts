@@ -1,13 +1,13 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
-import { App } from 'supertest/types';
+import type { Server } from 'http';
+import request from 'supertest';
 import { AllExceptionsFilter } from './../src/common/filters/all-exceptions.filter';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -93,8 +93,12 @@ describe('AppController (e2e)', () => {
     await app.close();
   });
 
+  function httpServer(): Server {
+    return app.getHttpServer() as Server;
+  }
+
   it('/ (GET)', () => {
-    return request(app.getHttpServer())
+    return request(httpServer())
       .get('/')
       .expect(200)
       .expect((res) => {
@@ -106,31 +110,31 @@ describe('AppController (e2e)', () => {
   });
 
   it('/users (GET) without token returns 401', () => {
-    return request(app.getHttpServer()).get('/users').expect(401);
+    return request(httpServer()).get('/users').expect(401);
   });
 
   it('/patients (GET) without token returns 401', () => {
-    return request(app.getHttpServer()).get('/patients').expect(401);
+    return request(httpServer()).get('/patients').expect(401);
   });
 
   it('/appointments (GET) without token returns 401', () => {
-    return request(app.getHttpServer()).get('/appointments').expect(401);
+    return request(httpServer()).get('/appointments').expect(401);
   });
 
   it('/treatment-notes (GET) without token returns 401', () => {
-    return request(app.getHttpServer()).get('/treatment-notes').expect(401);
+    return request(httpServer()).get('/treatment-notes').expect(401);
   });
 
   it('/exercise-plans (GET) without token returns 401', () => {
-    return request(app.getHttpServer()).get('/exercise-plans').expect(401);
+    return request(httpServer()).get('/exercise-plans').expect(401);
   });
 
   it('/progress (GET) without token returns 401', () => {
-    return request(app.getHttpServer()).get('/progress').expect(401);
+    return request(httpServer()).get('/progress').expect(401);
   });
 
   it('unknown route returns JSON 404 with path', () => {
-    return request(app.getHttpServer())
+    return request(httpServer())
       .get('/this-route-does-not-exist-xyz')
       .expect(404)
       .expect((res) => {

@@ -26,7 +26,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const body = exception.getResponse();
       if (typeof body === 'string') {
         message = body;
-      } else if (typeof body === 'object' && body !== null && 'message' in body) {
+      } else if (
+        typeof body === 'object' &&
+        body !== null &&
+        'message' in body
+      ) {
         const m = (body as { message?: string | string[] }).message;
         if (m !== undefined) message = m;
       }
@@ -84,7 +88,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const isProd = process.env.NODE_ENV === 'production';
     response.status(status).json({
       statusCode: status,
-      message: isProd ? 'Internal server error' : err?.message ?? message,
+      message: isProd ? 'Internal server error' : (err?.message ?? message),
       path: request.url,
     });
   }

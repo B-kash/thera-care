@@ -33,7 +33,10 @@ export class TotpCryptoService {
   encryptUtf8(plaintext: string): string {
     const iv = randomBytes(IV_LEN);
     const cipher = createCipheriv(ALGO, this.deriveKey(), iv);
-    const enc = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const enc = Buffer.concat([
+      cipher.update(plaintext, 'utf8'),
+      cipher.final(),
+    ]);
     const tag = cipher.getAuthTag();
     return Buffer.concat([iv, tag, enc]).toString('base64');
   }

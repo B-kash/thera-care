@@ -174,7 +174,11 @@ export class TreatmentNotesService {
     return row;
   }
 
-  async remove(tenantId: string, id: string, ctx: AuditRequestContext): Promise<void> {
+  async remove(
+    tenantId: string,
+    id: string,
+    ctx: AuditRequestContext,
+  ): Promise<void> {
     const existing = await this.prisma.treatmentNote.findFirst({
       where: { id, tenantId },
       select: { patientId: true },
@@ -196,7 +200,9 @@ export class TreatmentNotesService {
     tenantId: string,
     patientId: string,
   ): Promise<void> {
-    const n = await this.prisma.patient.count({ where: { id: patientId, tenantId } });
+    const n = await this.prisma.patient.count({
+      where: { id: patientId, tenantId },
+    });
     if (n === 0) {
       throw new NotFoundException('Patient not found');
     }

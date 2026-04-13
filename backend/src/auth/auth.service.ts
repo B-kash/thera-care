@@ -224,9 +224,7 @@ export class AuthService {
     const { totpPendingSecretEnc, ...rest } = user;
     return {
       ...rest,
-      totpEnrollmentPending: Boolean(
-        totpPendingSecretEnc && !user.totpEnabled,
-      ),
+      totpEnrollmentPending: Boolean(totpPendingSecretEnc && !user.totpEnabled),
     };
   }
 
@@ -324,10 +322,7 @@ export class AuthService {
     });
   }
 
-  async requestMagicLink(
-    emailRaw: string,
-    tenantSlug?: string,
-  ): Promise<void> {
+  async requestMagicLink(emailRaw: string, tenantSlug?: string): Promise<void> {
     const tenant = await this.resolveTenant(tenantSlug);
     const email = normalizeEmail(emailRaw);
     const user = await this.prisma.user.findFirst({
@@ -351,7 +346,9 @@ export class AuthService {
     });
   }
 
-  async consumeMagicLinkToken(rawToken: string): Promise<{ accessToken: string }> {
+  async consumeMagicLinkToken(
+    rawToken: string,
+  ): Promise<{ accessToken: string }> {
     const consumed = await this.tokens.consume(
       rawToken,
       EmailAuthTokenPurpose.MAGIC_LINK,
