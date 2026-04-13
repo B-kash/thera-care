@@ -41,20 +41,30 @@ export class ExercisePlansController {
     return this.exercisePlansService.create(
       dto,
       req.user.userId,
+      req.user.tenantId,
       auditContextFromRequest(req),
     );
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findAllForPatient(@Query() query: ListExercisePlansQueryDto) {
-    return this.exercisePlansService.findAllForPatient(query);
+  findAllForPatient(
+    @Query() query: ListExercisePlansQueryDto,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.exercisePlansService.findAllForPatient(
+      req.user.tenantId,
+      query,
+    );
   }
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.THERAPIST, UserRole.STAFF)
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.exercisePlansService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request & { user: RequestUser },
+  ) {
+    return this.exercisePlansService.findOne(req.user.tenantId, id);
   }
 
   @Patch(':id')
@@ -65,6 +75,7 @@ export class ExercisePlansController {
     @Req() req: Request & { user: RequestUser },
   ) {
     return this.exercisePlansService.update(
+      req.user.tenantId,
       id,
       dto,
       auditContextFromRequest(req),
@@ -78,7 +89,11 @@ export class ExercisePlansController {
     @Param('id', ParseUUIDPipe) id: string,
     @Req() req: Request & { user: RequestUser },
   ) {
-    await this.exercisePlansService.remove(id, auditContextFromRequest(req));
+    await this.exercisePlansService.remove(
+      req.user.tenantId,
+      id,
+      auditContextFromRequest(req),
+    );
   }
 
   @Post(':id/items')
@@ -89,6 +104,7 @@ export class ExercisePlansController {
     @Req() req: Request & { user: RequestUser },
   ) {
     return this.exercisePlansService.addItem(
+      req.user.tenantId,
       id,
       dto,
       auditContextFromRequest(req),
@@ -104,6 +120,7 @@ export class ExercisePlansController {
     @Req() req: Request & { user: RequestUser },
   ) {
     return this.exercisePlansService.updateItem(
+      req.user.tenantId,
       id,
       itemId,
       dto,
@@ -120,6 +137,7 @@ export class ExercisePlansController {
     @Req() req: Request & { user: RequestUser },
   ) {
     await this.exercisePlansService.removeItem(
+      req.user.tenantId,
       id,
       itemId,
       auditContextFromRequest(req),

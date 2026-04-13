@@ -85,7 +85,14 @@ Users with role **ADMIN** see **Audit logs** in the sidebar. API: `GET /audit-lo
 
 For production-style lockdown, set **`ALLOW_PUBLIC_REGISTER=false`** on the API so `POST /auth/register` returns **403**. Set **`NEXT_PUBLIC_ALLOW_PUBLIC_REGISTER=false`** on the Next.js build so the login screen hides **Register** (same default rule as the API: unset allows signup in non-production only).
 
-**First administrator:** with public registration on, sign up once, then run SQL such as `UPDATE users SET role = 'ADMIN' WHERE lower(email) = lower('you@example.com');`. With registration off, insert the first user via SQL or a one-off script, then manage everyone else from **Users**.
+**First administrator:** with public registration on, sign up once, then promote that user in your clinic (SQL or admin tooling) — e.g. `UPDATE users SET role = 'ADMIN' WHERE tenant_id = (SELECT id FROM tenants WHERE slug = 'default') AND lower(email) = lower('you@example.com');`. With registration off, insert the first user via SQL or a one-off script, then manage everyone else from **Users**.
+
+### Progressive Web App (FR-13)
+
+- **Manifest & icons:** `frontend/src/app/manifest.ts` and `frontend/public/icons/*.png` (replace PNGs when branding changes).
+- **Service worker:** `frontend/public/sw.js` — precaches `/offline` + icons; **HTML navigations** fall back to `/offline` when the network is down; **`/api/*` is never cached** (network-only, 503 JSON body when offline). Does **not** silently persist clinical writes offline.
+- **Registration:** production builds register automatically. For **local** testing with `next dev` / `next start`, set `NEXT_PUBLIC_ENABLE_SW=true` in `frontend/.env.local` (see `frontend/.env.example`). **Install / A2HS** needs **HTTPS** in real deployments (localhost is exempt in browsers).
+- **Privacy (FR-10 overlap):** the worker may hold the offline HTML shell and static icon responses in `CacheStorage`; it does not store API JSON for later replay.
 
 ### Mobile / responsive (FR-12 smoke)
 

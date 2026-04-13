@@ -19,4 +19,10 @@ export class RegisterDto {
   @IsString()
   @MaxLength(120)
   displayName?: string;
+
+  /** Which clinic (tenant). Defaults to slug `default` when omitted. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  tenantSlug?: string;
 }

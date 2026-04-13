@@ -29,8 +29,11 @@ export class UsersController {
 
   @Get()
   @Roles(UserRole.ADMIN)
-  findAll(@Query() query: ListUsersQueryDto) {
-    return this.usersService.listForAdmin(query);
+  findAll(
+    @Req() req: Request & { user: RequestUser },
+    @Query() query: ListUsersQueryDto,
+  ) {
+    return this.usersService.listForAdmin(req.user.tenantId, query);
   }
 
   @Post()

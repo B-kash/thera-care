@@ -38,10 +38,12 @@ export class PatientsService {
   async create(
     dto: CreatePatientDto,
     createdByUserId: string,
+    tenantId: string,
     ctx: AuditRequestContext,
   ): Promise<PatientDto> {
     const row = await this.prisma.patient.create({
       data: {
+        tenantId,
         firstName: dto.firstName.trim(),
         lastName: dto.lastName.trim(),
         email: dto.email?.trim() || null,
@@ -62,21 +64,23 @@ export class PatientsService {
     return row;
   }
 
-  async findAll(query: ListPatientsQueryDto): Promise<PatientDto[]> {
+  async findAll(
+    tenantId: string,
+    query: ListPatientsQueryDto,
+  ): Promise<PatientDto[]> {
     const skip = query.skip ?? 0;
     const take = query.take ?? 50;
     const q = query.q?.trim();
 
-    const where: Prisma.PatientWhereInput | undefined = q
-      ? {
-          OR: [
-            { firstName: { contains: q, mode: 'insensitive' } },
-            { lastName: { contains: q, mode: 'insensitive' } },
-            { email: { contains: q, mode: 'insensitive' } },
-            { phone: { contains: q, mode: 'insensitive' } },
-          ],
-        }
-      : undefined;
+    const where: Prisma.PatientWhereInput = { tenantId };
+    if (q) {
+      where.OR = [
+        { firstName: { contains: q, mode: 'insensitive' } },
+        { lastName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } },
+      ];
+    }
 
     return this.prisma.patient.findMany({
       where,
@@ -87,9 +91,9 @@ export class PatientsService {
     });
   }
 
-  async findOne(id: string): Promise<PatientDto> {
-    const row = await this.prisma.patient.findUnique({
-      where: { id },
+  async findOne(tenantId: string, id: string): Promise<PatientDto> {
+    const row = await this.prisma.patient.findFirst({
+      where: { id, tenantId },
       select: patientSelect,
     });
     if (!row) {
@@ -99,11 +103,12 @@ export class PatientsService {
   }
 
   async update(
+    tenantId: string,
     id: string,
     dto: UpdatePatientDto,
     ctx: AuditRequestContext,
   ): Promise<PatientDto> {
-    await this.ensureExists(id);
+    await this.ensureExists(tenantId, id);
 
     const data: Prisma.PatientUpdateInput = {};
     if (dto.firstName !== undefined) {
@@ -127,7 +132,7 @@ export class PatientsService {
     }
 
     const row = await this.prisma.patient.update({
-      where: { id },
+      where: { id, tenantId },
       data,
       select: patientSelect,
     });
@@ -141,9 +146,13 @@ export class PatientsService {
     return row;
   }
 
-  async remove(id: string, ctx: AuditRequestContext): Promise<void> {
-    await this.ensureExists(id);
-    await this.prisma.patient.delete({ where: { id } });
+  async remove(
+    tenantId: string,
+    id: string,
+    ctx: AuditRequestContext,
+  ): Promise<void> {
+    await this.ensureExists(tenantId, id);
+    await this.prisma.patient.delete({ where: { id, tenantId } });
     await this.audit.logEvent({
       context: ctx,
       action: AuditAction.DELETE,
@@ -153,8 +162,8 @@ export class PatientsService {
     });
   }
 
-  private async ensureExists(id: string): Promise<void> {
-    const count = await this.prisma.patient.count({ where: { id } });
+  private async ensureExists(tenantId: string, id: string): Promise<void> {
+    const count = await this.prisma.patient.count({ where: { id, tenantId } });
     if (count === 0) {
       throw new NotFoundException('Patient not found');
     }

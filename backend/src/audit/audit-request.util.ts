@@ -2,6 +2,7 @@ import type { Request } from 'express';
 import type { RequestUser } from '../auth/strategies/jwt.strategy';
 
 export type AuditRequestContext = {
+  tenantId: string;
   actorUserId: string;
   ip: string | null;
   userAgent: string | null;
@@ -11,6 +12,7 @@ export function auditContextFromRequest(
   req: Request & { user: RequestUser },
 ): AuditRequestContext {
   return {
+    tenantId: req.user.tenantId,
     actorUserId: req.user.userId,
     ip: clientIp(req),
     userAgent: userAgentHeader(req),

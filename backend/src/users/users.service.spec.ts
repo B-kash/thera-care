@@ -10,6 +10,7 @@ describe('UsersService', () => {
   const audit = { logEvent: jest.fn().mockResolvedValue(undefined) };
   const prisma = {
     user: {
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
@@ -19,6 +20,7 @@ describe('UsersService', () => {
   };
 
   const ctx = {
+    tenantId: 't1',
     actorUserId: 'admin-1',
     ip: null as string | null,
     userAgent: null as string | null,
@@ -38,7 +40,7 @@ describe('UsersService', () => {
   });
 
   it('update throws when user missing', async () => {
-    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
       service.update(
@@ -50,10 +52,11 @@ describe('UsersService', () => {
   });
 
   it('update throws when no fields provided', async () => {
-    prisma.user.findUnique.mockResolvedValue({
+    prisma.user.findFirst.mockResolvedValue({
       id: 'u1',
       role: UserRole.ADMIN,
       active: true,
+      tenantId: 't1',
     });
 
     await expect(service.update('u1', {}, ctx)).rejects.toBeInstanceOf(
@@ -62,10 +65,11 @@ describe('UsersService', () => {
   });
 
   it('update blocks removing the last active admin', async () => {
-    prisma.user.findUnique.mockResolvedValue({
+    prisma.user.findFirst.mockResolvedValue({
       id: 'only-admin',
       role: UserRole.ADMIN,
       active: true,
+      tenantId: 't1',
     });
     prisma.user.count.mockResolvedValue(0);
 

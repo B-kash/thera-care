@@ -41,10 +41,13 @@ export class UsersService {
     private readonly audit: AuditService,
   ) {}
 
-  async listForAdmin(query: ListUsersQueryDto): Promise<UserListRowDto[]> {
+  async listForAdmin(
+    tenantId: string,
+    query: ListUsersQueryDto,
+  ): Promise<UserListRowDto[]> {
     const skip = query.skip ?? 0;
     const take = query.take ?? 50;
-    const where: Prisma.UserWhereInput = {};
+    const where: Prisma.UserWhereInput = { tenantId };
     if (query.role) {
       where.role = query.role;
     }
@@ -66,7 +69,9 @@ export class UsersService {
     ctx: AuditRequestContext,
   ): Promise<UserListRowDto> {
     const email = dto.email.trim().toLowerCase();
-    const existing = await this.prisma.user.findUnique({ where: { email } });
+    const existing = await this.prisma.user.findFirst({
+      where: { tenantId: ctx.tenantId, email },
+    });
     if (existing) {
       throw new ConflictException('An account with this email already exists');
     }
@@ -74,6 +79,7 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const row = await this.prisma.user.create({
       data: {
+        tenantId: ctx.tenantId,
         email,
         passwordHash,
         displayName: dto.displayName?.trim() || null,
@@ -107,18 +113,23 @@ export class UsersService {
       throw new BadRequestException('No fields to update');
     }
 
-    const current = await this.prisma.user.findUnique({
-      where: { id },
-      select: { id: true, role: true, active: true },
+    const current = await this.prisma.user.findFirst({
+      where: { id, tenantId: ctx.tenantId },
+      select: { id: true, role: true, active: true, tenantId: true },
     });
     if (!current) {
       throw new NotFoundException('User not found');
     }
 
-    await this.assertKeepsAtLeastOneAdmin(id, current, {
-      role: dto.role,
-      active: dto.active,
-    });
+    await this.assertKeepsAtLeastOneAdmin(
+      id,
+      ctx.tenantId,
+      current,
+      {
+        role: dto.role,
+        active: dto.active,
+      },
+    );
 
     const data: Prisma.UserUpdateInput = {};
     if (dto.displayName !== undefined) {
@@ -166,6 +177,7 @@ export class UsersService {
 
   private async assertKeepsAtLeastOneAdmin(
     targetUserId: string,
+    tenantId: string,
     current: { role: UserRole; active: boolean },
     next: { role?: UserRole; active?: boolean },
   ): Promise<void> {
@@ -178,6 +190,7 @@ export class UsersService {
     if (wasAdminActive && !willBeAdminActive) {
       const other = await this.prisma.user.count({
         where: {
+          tenantId,
           role: UserRole.ADMIN,
           active: true,
           id: { not: targetUserId },

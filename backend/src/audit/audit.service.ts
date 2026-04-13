@@ -51,6 +51,7 @@ export class AuditService {
     try {
       await this.prisma.auditLog.create({
         data: {
+          tenantId: context.tenantId,
           actorUserId: context.actorUserId,
           action,
           entityType,
@@ -70,11 +71,14 @@ export class AuditService {
     }
   }
 
-  async listForAdmin(query: ListAuditLogsQueryDto): Promise<AuditLogRowDto[]> {
+  async listForAdmin(
+    tenantId: string,
+    query: ListAuditLogsQueryDto,
+  ): Promise<AuditLogRowDto[]> {
     const take = query.take ?? 50;
     const skip = query.skip ?? 0;
 
-    const where: Prisma.AuditLogWhereInput = {};
+    const where: Prisma.AuditLogWhereInput = { tenantId };
     if (query.entityType) {
       where.entityType = query.entityType;
     }

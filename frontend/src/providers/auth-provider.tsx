@@ -12,12 +12,20 @@ import {
 
 export type UserRole = "ADMIN" | "THERAPIST" | "STAFF";
 
+export type AuthTenant = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 export type AuthUser = {
   id: string;
   email: string;
   displayName: string | null;
   role: UserRole;
   active: boolean;
+  tenantId: string;
+  tenant: AuthTenant;
   createdAt: string;
   updatedAt: string;
 };
@@ -27,11 +35,16 @@ type AuthContextValue = {
   /** @deprecated Prefer `user`; kept for gradual refactors. Always null in cookie mode. */
   token: null;
   user: AuthUser | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    tenantSlug?: string,
+  ) => Promise<void>;
   register: (
     email: string,
     password: string,
     displayName?: string,
+    tenantSlug?: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -48,6 +61,12 @@ async function parseErrorResponse(res: Response): Promise<string> {
     /* ignore */
   }
   return text || `Request failed (${res.status})`;
+}
+
+function defaultTenantSlugBody(): { tenantSlug?: string } {
+  const fromEnv = process.env.NEXT_PUBLIC_DEFAULT_TENANT_SLUG?.trim();
+  if (fromEnv) return { tenantSlug: fromEnv };
+  return {};
 }
 
 async function fetchMe(): Promise<AuthUser> {
@@ -81,27 +100,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await fetch(resolveApiUrl("/auth/login"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      throw new Error(await parseErrorResponse(res));
-    }
-    const u = await fetchMe();
-    setUser(u);
-  }, []);
+  const login = useCallback(
+    async (email: string, password: string, tenantSlug?: string) => {
+      const res = await fetch(resolveApiUrl("/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email,
+          password,
+          ...defaultTenantSlugBody(),
+          ...(tenantSlug?.trim() ? { tenantSlug: tenantSlug.trim() } : {}),
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(await parseErrorResponse(res));
+      }
+      const u = await fetchMe();
+      setUser(u);
+    },
+    [],
+  );
 
   const register = useCallback(
-    async (email: string, password: string, displayName?: string) => {
+    async (
+      email: string,
+      password: string,
+      displayName?: string,
+      tenantSlug?: string,
+    ) => {
       const res = await fetch(resolveApiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password, displayName }),
+        body: JSON.stringify({
+          email,
+          password,
+          displayName,
+          ...defaultTenantSlugBody(),
+          ...(tenantSlug?.trim() ? { tenantSlug: tenantSlug.trim() } : {}),
+        }),
       });
       if (!res.ok) {
         throw new Error(await parseErrorResponse(res));

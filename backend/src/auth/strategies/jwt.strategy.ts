@@ -11,12 +11,14 @@ export type AccessTokenPayload = {
   sub: string;
   email: string;
   role?: string;
+  tenantId?: string;
 };
 
 export type RequestUser = {
   userId: string;
   email: string;
   role: UserRole;
+  tenantId: string;
 };
 
 function cookieExtractor(req: Request): string | null {
@@ -41,17 +43,24 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: AccessTokenPayload): Promise<RequestUser> {
-    const user = await this.prisma.user.findUnique({
+    const row = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, active: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        tenantId: true,
+        active: true,
+      },
     });
-    if (!user || !user.active) {
+    if (!row || !row.active) {
       throw new UnauthorizedException();
     }
     return {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
+      userId: row.id,
+      email: row.email,
+      role: row.role,
+      tenantId: row.tenantId,
     };
   }
 }
